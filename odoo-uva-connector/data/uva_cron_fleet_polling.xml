@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+    <data noupdate="1">
+        <!-- D-09: fast cron (1-minute interval) + per-record throttle in _is_poll_due() -->
+        <record id="ir_cron_uva_fleet_polling" model="ir.cron">
+            <field name="name">Uva PR: Poll Fleet Delivery Status</field>
+            <field name="model_id" ref="model_uva_fleet_service"/>
+            <field name="state">code</field>
+            <field name="code">model.poll_active_deliveries()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="priority">10</field>
+        </record>
+    </data>
+</odoo>

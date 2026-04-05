@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <record id="view_uva_fleet_estimate_wizard_form" model="ir.ui.view">
+        <field name="name">uva.fleet.estimate.wizard.form</field>
+        <field name="model">uva.fleet.estimate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Uva Fleet — Delivery Cost Estimate">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Please review the delivery cost estimate before confirming dispatch.</strong>
+                    </div>
+                    <group>
+                        <field name="picking_id" readonly="1"/>
+                        <field name="carrier_id" readonly="1"/>
+                    </group>
+                    <group string="Estimate">
+                        <field name="estimated_amount" readonly="1"
+                               widget="monetary"
+                               data-testid="fleet-estimate-amount"/>
+                        <field name="estimated_currency" readonly="1"/>
+                        <field name="eta_minutes" readonly="1"
+                               data-testid="fleet-estimate-eta"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm"
+                            string="Confirm &amp; Dispatch"
+                            type="object"
+                            class="btn-primary"
+                            data-testid="fleet-estimate-confirm-btn"/>
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            class="btn-secondary"
+                            data-testid="fleet-estimate-cancel-btn"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_uva_fleet_estimate_wizard" model="ir.actions.act_window">
+        <field name="name">Uva Fleet Estimate</field>
+        <field name="res_model">uva.fleet.estimate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

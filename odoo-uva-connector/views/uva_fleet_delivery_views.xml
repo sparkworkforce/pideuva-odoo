@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <record id="view_uva_fleet_delivery_list" model="ir.ui.view">
+        <field name="name">uva.fleet.delivery.list</field>
+        <field name="model">uva.fleet.delivery</field>
+        <field name="arch" type="xml">
+            <list string="Uva Fleet Deliveries"
+                  decoration-success="state == 'delivered'"
+                  decoration-danger="state == 'failed'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="uva_delivery_id"/>
+                <field name="picking_id"/>
+                <field name="sale_order_id"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'delivered'"
+                       decoration-info="state in ('assigned', 'in_transit')"
+                       decoration-danger="state == 'failed'"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="estimated_cost"/>
+                <field name="last_status_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_uva_fleet_delivery_form" model="ir.ui.view">
+        <field name="name">uva.fleet.delivery.form</field>
+        <field name="model">uva.fleet.delivery</field>
+        <field name="arch" type="xml">
+            <form string="Uva Fleet Delivery">
+                <header>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,assigned,in_transit,delivered"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Delivery Info">
+                            <field name="name" readonly="1"/>
+                            <field name="uva_delivery_id" readonly="1"
+                                   data-testid="fleet-delivery-uva-id"/>
+                            <field name="carrier_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group string="Linked Records">
+                            <field name="picking_id" readonly="1"/>
+                            <field name="sale_order_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Cost &amp; Timing">
+                            <field name="estimated_cost" readonly="1"/>
+                            <field name="last_status_at" readonly="1"/>
+                        </group>
+                        <group string="Tracking">
+                            <field name="tracking_url" readonly="1" widget="url"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_uva_fleet_delivery" model="ir.actions.act_window">
+        <field name="name">Uva Fleet Deliveries</field>
+        <field name="res_model">uva.fleet.delivery</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_uva_fleet_delivery"
+              name="Uva Fleet Deliveries"
+              parent="stock.menu_stock_root"
+              action="action_uva_fleet_delivery"
+              sequence="95"/>
+
+</odoo>

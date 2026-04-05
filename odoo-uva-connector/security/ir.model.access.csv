@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_uva_api_retry_queue_user,uva.api.retry.queue user,model_uva_api_retry_queue,base.group_user,1,0,0,0
+access_uva_api_retry_queue_system,uva.api.retry.queue system,model_uva_api_retry_queue,base.group_system,1,1,1,1
+access_uva_store_config_user,uva.store.config,model_uva_store_config,base.group_user,1,0,0,0
+access_uva_store_config_admin,uva.store.config,model_uva_store_config,base.group_system,1,1,1,1
+access_uva_product_mapping_user,uva.product.mapping,model_uva_product_mapping,base.group_user,1,0,0,0
+access_uva_product_mapping_admin,uva.product.mapping,model_uva_product_mapping,base.group_system,1,1,1,1
+access_uva_order_log_user,uva.order.log,model_uva_order_log,base.group_user,1,0,0,0
+access_uva_order_log_admin,uva.order.log,model_uva_order_log,base.group_system,1,1,1,1
+access_uva_fleet_delivery_user,uva.fleet.delivery,model_uva_fleet_delivery,base.group_user,1,0,0,0
+access_uva_fleet_delivery_admin,uva.fleet.delivery,model_uva_fleet_delivery,base.group_system,1,1,1,1
+access_uva_fleet_estimate_wizard_user,uva.fleet.estimate.wizard,model_uva_fleet_estimate_wizard,base.group_user,1,1,1,1

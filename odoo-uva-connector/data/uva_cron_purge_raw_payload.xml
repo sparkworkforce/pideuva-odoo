@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<!--
+    GDPR/PR Privacy Compliance: raw_payload on uva.order.log contains PII
+    (customer name, address, phone). Purge records older than 30 days.
+    See design doc D-04 addendum and requirements raw_payload note.
+-->
+<odoo>
+    <data noupdate="1">
+        <record id="ir_cron_uva_purge_raw_payload" model="ir.cron">
+            <field name="name">Uva PR: Purge Raw Payload (30-day PII cleanup)</field>
+            <field name="model_id" ref="model_uva_order_log"/>
+            <field name="state">code</field>
+            <field name="code">
+cutoff = (datetime.datetime.utcnow() - datetime.timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+records = env['uva.order.log'].sudo().search([
+    ('received_at', '&lt;', cutoff),
+    ('raw_payload', '!=', False),
+])
+records.sudo().write({'raw_payload': False})
+            </field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 02:00:00')"/>
+            <field name="active">True</field>
+            <field name="priority">20</field>
+        </record>
+    </data>
+</odoo>

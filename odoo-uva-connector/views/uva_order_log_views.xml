@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <!-- List view -->
+    <record id="view_uva_order_log_list" model="ir.ui.view">
+        <field name="name">uva.order.log.list</field>
+        <field name="model">uva.order.log</field>
+        <field name="arch" type="xml">
+            <list string="Uva Incoming Orders" decoration-danger="state == 'error'"
+                  decoration-warning="state == 'pending'"
+                  decoration-success="state == 'done'"
+                  decoration-muted="state == 'rejected'">
+                <field name="external_id" data-testid="order-log-external-id"/>
+                <field name="store_name"/>
+                <field name="state" widget="badge"
+                       decoration-danger="state == 'error'"
+                       decoration-warning="state == 'pending'"
+                       decoration-success="state == 'done'"
+                       decoration-info="state == 'accepted'"
+                       decoration-muted="state == 'rejected'"/>
+                <field name="received_at"/>
+                <field name="processed_at"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_uva_order_log_form" model="ir.ui.view">
+        <field name="name">uva.order.log.form</field>
+        <field name="model">uva.order.log</field>
+        <field name="arch" type="xml">
+            <form string="Uva Order">
+                <header>
+                    <!-- action_retry: visible only in error state -->
+                    <button name="action_retry"
+                            string="Retry"
+                            type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'error')]}"
+                            data-testid="order-log-retry-btn"/>
+                    <!-- action_reject: visible in draft, pending, error -->
+                    <button name="action_reject"
+                            string="Reject"
+                            type="object"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', 'not in', ['draft', 'pending', 'error'])]}"
+                            data-testid="order-log-reject-btn"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,pending,accepted,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Order Info">
+                            <field name="external_id" readonly="1"
+                                   data-testid="order-log-external-id"/>
+                            <field name="store_id" readonly="1"/>
+                            <field name="received_at" readonly="1"/>
+                            <field name="processed_at" readonly="1"/>
+                        </group>
+                        <group string="POS">
+                            <field name="pos_order_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <!-- raw_payload: system admins only (PII) -->
+                    <group string="Raw Payload" groups="base.group_system">
+                        <field name="raw_payload" readonly="1"
+                               groups="base.group_system"
+                               widget="text"
+                               data-testid="order-log-raw-payload"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_uva_order_log_search" model="ir.ui.view">
+        <field name="name">uva.order.log.search</field>
+        <field name="model">uva.order.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="external_id"/>
+                <field name="store_id"/>
+                <filter name="error" string="Errors" domain="[('state','=','error')]"/>
+                <filter name="pending" string="Awaiting Mapping" domain="[('state','=','pending')]"/>
+                <filter name="done" string="Processed" domain="[('state','=','done')]"/>
+                <filter name="today" string="Today"
+                        domain="[('received_at','&gt;=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_store" string="Store" context="{'group_by': 'store_id'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_uva_order_log" model="ir.actions.act_window">
+        <field name="name">Uva Incoming Orders</field>
+        <field name="res_model">uva.order.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_uva_order_log"
+              name="Uva Incoming Orders"
+              parent="point_of_sale.menu_point_root"
+              action="action_uva_order_log"
+              sequence="95"/>
+
+</odoo>

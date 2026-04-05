@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Odoo
+odoo-uva-connector/__manifest__.py
+*.pyc
+filestore/
+
+# Project internal (not for GitHub)
+aidlc-docs/
+aidlc-workflows-main/
+Plan_Modulo_Odoo_Uva_PR.docx
+.kiro/

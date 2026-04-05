@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <!-- List view -->
+    <record id="view_uva_store_config_list" model="ir.ui.view">
+        <field name="name">uva.store.config.list</field>
+        <field name="model">uva.store.config</field>
+        <field name="arch" type="xml">
+            <list string="Uva Stores">
+                <field name="name"/>
+                <field name="pos_config_id"/>
+                <field name="polling_enabled"/>
+                <field name="polling_interval"/>
+                <field name="demo_mode"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_uva_store_config_form" model="ir.ui.view">
+        <field name="name">uva.store.config.form</field>
+        <field name="model">uva.store.config</field>
+        <field name="arch" type="xml">
+            <form string="Uva Store Configuration">
+                <header>
+                    <!-- Test Connection button — stub until Uva API confirmed -->
+                    <button name="action_test_connection"
+                            string="Test Connection"
+                            type="object"
+                            class="btn-secondary"
+                            data-testid="store-config-test-connection-btn"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Demo Mode" bg_color="bg-warning"
+                            attrs="{'invisible': [('demo_mode', '=', False)]}"/>
+                    <widget name="web_ribbon" title="Inactive" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <group>
+                        <group string="General">
+                            <field name="name" data-testid="store-config-name"/>
+                            <field name="pos_config_id" data-testid="store-config-pos"/>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="demo_mode" widget="boolean_toggle"
+                                   data-testid="store-config-demo-mode"/>
+                        </group>
+                        <group string="Credentials" groups="base.group_system">
+                            <!-- groups attribute hides these fields from non-admins -->
+                            <field name="api_key"
+                                   groups="base.group_system"
+                                   password="True"
+                                   data-testid="store-config-api-key"/>
+                            <field name="webhook_secret"
+                                   groups="base.group_system"
+                                   password="True"
+                                   data-testid="store-config-webhook-secret"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Order Acceptance">
+                            <field name="auto_accept_timeout"
+                                   data-testid="store-config-auto-accept-timeout"/>
+                        </group>
+                        <group string="Polling Fallback">
+                            <field name="polling_enabled" widget="boolean_toggle"/>
+                            <field name="polling_interval"
+                                   attrs="{'invisible': [('polling_enabled', '=', False)]}"
+                                   data-testid="store-config-polling-interval"/>
+                            <field name="last_polled_at" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_uva_store_config_search" model="ir.ui.view">
+        <field name="name">uva.store.config.search</field>
+        <field name="model">uva.store.config</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="pos_config_id"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
+                <filter name="demo" string="Demo Mode" domain="[('demo_mode','=',True)]"/>
+                <filter name="inactive" string="Inactive" domain="[('active','=',False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_uva_store_config" model="ir.actions.act_window">
+        <field name="name">Uva Stores</field>
+        <field name="res_model">uva.store.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <!-- Menu — under Point of Sale > Configuration -->
+    <menuitem id="menu_uva_store_config"
+              name="Uva Stores"
+              parent="point_of_sale.menu_point_config"
+              action="action_uva_store_config"
+              sequence="90"/>
+
+</odoo>

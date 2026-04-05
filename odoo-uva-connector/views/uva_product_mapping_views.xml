@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <!-- List view -->
+    <record id="view_uva_product_mapping_list" model="ir.ui.view">
+        <field name="name">uva.product.mapping.list</field>
+        <field name="model">uva.product.mapping</field>
+        <field name="arch" type="xml">
+            <list string="Uva Product Mappings">
+                <field name="store_id"/>
+                <field name="uva_product_id" data-testid="mapping-uva-product-id"/>
+                <field name="odoo_product_id" data-testid="mapping-odoo-product"/>
+                <field name="odoo_product_name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_uva_product_mapping_form" model="ir.ui.view">
+        <field name="name">uva.product.mapping.form</field>
+        <field name="model">uva.product.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Uva Product Mapping">
+                <sheet>
+                    <group>
+                        <field name="store_id" data-testid="mapping-store"/>
+                        <field name="uva_product_id" data-testid="mapping-uva-product-id"/>
+                        <field name="odoo_product_id" data-testid="mapping-odoo-product"/>
+                        <field name="active" widget="boolean_toggle"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_uva_product_mapping_search" model="ir.ui.view">
+        <field name="name">uva.product.mapping.search</field>
+        <field name="model">uva.product.mapping</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="uva_product_id" string="Uva Product ID"/>
+                <field name="odoo_product_id" string="Odoo Product"/>
+                <field name="store_id"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_uva_product_mapping" model="ir.actions.act_window">
+        <field name="name">Uva Product Mappings</field>
+        <field name="res_model">uva.product.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <!-- Menu — under Point of Sale > Configuration -->
+    <menuitem id="menu_uva_product_mapping"
+              name="Uva Product Mappings"
+              parent="point_of_sale.menu_point_config"
+              action="action_uva_product_mapping"
+              sequence="91"/>
+
+</odoo>

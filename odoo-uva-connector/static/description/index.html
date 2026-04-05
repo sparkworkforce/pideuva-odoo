@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Uva PR Connector</title>
+</head>
+<body>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <h2 class="oe_slogan">Uva PR Connector</h2>
+        <h3 class="oe_slogan">Integrate Odoo POS and delivery with Uva PR — Puerto Rico's local delivery platform</h3>
+    </div>
+</section>
+
+<section class="oe_container oe_dark">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span6">
+            <h2>Flow A — Incoming Orders (POS Connector)</h2>
+            <p>Uva customer orders appear automatically in the Odoo POS interface.
+            Staff can accept, reject, or mark items as unavailable directly from POS —
+            without touching the Uva app.</p>
+            <ul>
+                <li>Webhook + polling fallback ingestion</li>
+                <li>Real-time POS notification via bus.bus</li>
+                <li>Configurable auto-accept timeout</li>
+                <li>Multi-store support</li>
+                <li>Product mapping table</li>
+            </ul>
+        </div>
+        <div class="oe_span6">
+            <h2>Flow B — Outbound Delivery (Uva Fleet)</h2>
+            <p>Dispatch deliveries via Uva Fleet drivers directly from Odoo sale orders
+            or stock pickings. Real-time tracking status posted to Odoo chatters.</p>
+            <ul>
+                <li>Cost estimate before dispatch</li>
+                <li>Dispatch from sale order or stock picking</li>
+                <li>Real-time status tracking</li>
+                <li>Cancellation from Odoo</li>
+                <li>Automatic retry on transient failures</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <h2>Compatibility</h2>
+        <p>Supports Odoo 17, 18, and 19 Enterprise. Deployable on Odoo.sh.</p>
+        <h2>Demo Mode</h2>
+        <p>Enabled by default. Evaluate the full integration without real Uva credentials.
+        Disable demo mode and enter your API keys when ready for production.</p>
+        <h2>License</h2>
+        <p>OPL-1 — <a href="https://www.odoo.com/documentation/17.0/legal/licenses.html">Odoo Proprietary License v1.0</a></p>
+    </div>
+</section>
+
+</body>
+</html>

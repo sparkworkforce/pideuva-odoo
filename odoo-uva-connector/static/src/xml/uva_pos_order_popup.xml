@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<templates xml:space="preserve">
+
+    <t t-name="odoo_uva_connector.UvaPosOrderPopup" owl="1">
+        <div t-if="state.visible" class="uva-order-popup modal-backdrop"
+             data-testid="uva-order-popup">
+            <div class="uva-order-popup-dialog modal-dialog">
+                <div class="modal-content">
+
+                    <!-- Header -->
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            🛵 New Uva Order
+                            <span t-if="props.storeConfig.storeName"
+                                  class="badge bg-light text-dark ms-2"
+                                  t-esc="props.storeConfig.storeName"/>
+                        </h5>
+                        <span t-if="state.countdown > 0"
+                              class="badge bg-warning text-dark"
+                              data-testid="uva-countdown">
+                            Auto-accept in <t t-esc="state.countdown"/>s
+                        </span>
+                    </div>
+
+                    <!-- Order details -->
+                    <div class="modal-body" t-if="state.currentOrder">
+                        <p class="text-muted small">
+                            Order ID: <strong t-esc="state.currentOrder.external_id"/>
+                        </p>
+
+                        <!-- Items list -->
+                        <div t-if="state.currentOrder.items and state.currentOrder.items.length"
+                             class="uva-order-items">
+                            <h6>Items</h6>
+                            <ul class="list-group">
+                                <t t-foreach="state.currentOrder.items" t-as="item" t-key="item.product_id">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center"
+                                        t-att-class="state.unavailableItems.has(item.product_id) ? 'list-group-item-danger' : ''">
+                                        <span>
+                                            <t t-esc="item.name or item.product_id"/>
+                                            <span class="badge bg-secondary ms-1"
+                                                  t-esc="'x' + (item.qty or 1)"/>
+                                        </span>
+                                        <button class="btn btn-sm"
+                                                t-att-class="state.unavailableItems.has(item.product_id) ? 'btn-danger' : 'btn-outline-secondary'"
+                                                t-att-data-testid="'item-unavailable-' + item.product_id"
+                                                t-on-click="() => toggleItemUnavailable(item.product_id)">
+                                            <t t-if="state.unavailableItems.has(item.product_id)">
+                                                Unavailable ✓
+                                            </t>
+                                            <t t-else="">
+                                                Mark Unavailable
+                                            </t>
+                                        </button>
+                                    </li>
+                                </t>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="modal-footer">
+                        <!-- Error message shown when RPC fails — popup stays open for retry -->
+                        <div t-if="state.error" class="alert alert-danger w-100 mb-2"
+                             data-testid="uva-popup-error">
+                            <t t-esc="state.error"/>
+                        </div>
+                        <button class="btn btn-danger"
+                                data-testid="uva-reject-btn"
+                                t-att-disabled="state.submitting"
+                                t-on-click="onReject">
+                            ✗ Reject
+                        </button>
+                        <button class="btn btn-success"
+                                data-testid="uva-accept-btn"
+                                t-att-disabled="state.submitting"
+                                t-on-click="onAccept">
+                            <t t-if="state.submitting">Processing…</t>
+                            <t t-elif="hasUnavailableItems">✓ Accept (with modifications)</t>
+                            <t t-else="">✓ Accept</t>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>
