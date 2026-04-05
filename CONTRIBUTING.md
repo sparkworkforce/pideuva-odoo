@@ -4,17 +4,18 @@ This is a proprietary module licensed under OPL-1. Contributions are accepted on
 
 ## Branching
 
-- `18.0` — primary development branch (Odoo 18)
+- `main` — primary development branch (targets Odoo 18)
 - `17.0` — Odoo 17 stable
+- `18.0` — Odoo 18 stable
 - `19.0` — Odoo 19 stable
 
-Features are developed on `18.0` first, then backported/forward-ported.
+Features are developed on `main` first, then ported to version branches.
 
 ## Branch Naming
 
 ```
-18.0-feature/short-description
-18.0-fix/short-description
+main-feature/short-description
+main-fix/short-description
 ```
 
 ## Commit Messages

@@ -114,12 +114,12 @@ odoo-bin -d test_db --test-enable --stop-after-init -i odoo_uva_connector
 
 ## Branching Strategy
 
-Development follows the Odoo community convention:
+- `main` — primary development branch (targets Odoo 18)
 - `17.0` — Odoo 17 stable
-- `18.0` — Odoo 18 stable (primary development branch)
+- `18.0` — Odoo 18 stable
 - `19.0` — Odoo 19 stable
 
-Features are developed on `18.0` first, then backported/forward-ported as needed.
+Features are developed on `main` first, then ported to version branches as needed.
 
 ## License
 
