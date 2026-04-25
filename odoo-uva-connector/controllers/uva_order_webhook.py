@@ -93,13 +93,32 @@ class UvaOrderWebhookController(http.Controller):
         signature = request.httprequest.headers.get('X-Uva-Signature', '')
         webhook_secret = store_config.sudo().webhook_secret or ''
 
+        if not webhook_secret:
+            _logger.warning(
+                "UvaOrderWebhookController: webhook_secret not configured for store_id=%s",
+                store_id,
+            )
+            return Response(
+                json.dumps({'error': 'webhook not configured'}),
+                status=403,
+                mimetype='application/json',
+            )
+
         if not env['uva.api.client'].validate_hmac(raw_body, signature, webhook_secret):
             _logger.warning(
                 "UvaOrderWebhookController: HMAC validation failed for store_id=%s", store_id
             )
             return Response(
-                json.dumps({'error': 'invalid signature'}),
-                status=400,
+                json.dumps({'error': 'forbidden'}),
+                status=403,
+                mimetype='application/json',
+            )
+
+        # Store hours check — after HMAC so unauthenticated callers can't probe hours
+        if not store_config.is_store_open():
+            return Response(
+                json.dumps({'status': 'store_closed'}),
+                status=200,
                 mimetype='application/json',
             )
 
@@ -123,7 +142,6 @@ class UvaOrderWebhookController(http.Controller):
             return Response(
                 json.dumps({
                     'status': 'ok',
-                    'order_id': order_log.id if order_log else None,
                 }),
                 status=200,
                 mimetype='application/json',

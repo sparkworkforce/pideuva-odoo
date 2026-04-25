@@ -42,6 +42,8 @@ class UvaFleetEstimateWizard(models.TransientModel):
     def action_confirm(self):
         """Merchant confirms the estimate — proceed with dispatch."""
         self.ensure_one()
+        if not self.env.user.has_group('stock.group_stock_user'):
+            raise UserError(_("You do not have permission to dispatch deliveries."))
         if not self.picking_id or not self.carrier_id:
             raise UserError(_("Missing picking or carrier information."))
 

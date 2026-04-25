@@ -57,11 +57,6 @@
         <field name="context">{'active_test': False}</field>
     </record>
 
-    <!-- Menu — under Point of Sale > Configuration -->
-    <menuitem id="menu_uva_product_mapping"
-              name="Uva Product Mappings"
-              parent="point_of_sale.menu_point_config"
-              action="action_uva_product_mapping"
-              sequence="91"/>
+    <!-- Menu: defined in uva_dashboard_views.xml (re-parented under Uva root) -->
 
 </odoo>

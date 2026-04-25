@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+    <template id="tracking_page" name="Uva Delivery Tracking">
+        <html>
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title><t t-esc="lang.get('title', 'Delivery Tracking')"/></title>
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                <style>
+                    :root { --uva-orange: #ff6b00; --uva-dark: #1a1a2e; --uva-gray: #f8f9fa; }
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--uva-gray); color: #333; }
+                    .container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #fff; }
+                    .header { background: var(--uva-orange); color: #fff; padding: 20px 16px; text-align: center; }
+                    .header h1 { font-size: 1.2rem; font-weight: 700; }
+                    .header .ref { font-size: .8rem; opacity: .85; margin-top: 4px; }
+                    #map { width: 100%; height: 250px; }
+                    .eta-bar { background: var(--uva-dark); color: #fff; padding: 16px; text-align: center; }
+                    .eta-bar .eta-label { font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; opacity: .7; }
+                    .eta-bar .eta-value { font-size: 1.8rem; font-weight: 700; margin-top: 2px; }
+                    .eta-bar .eta-sub { font-size: .8rem; opacity: .6; }
+                    .content { padding: 20px 16px; }
+                    /* Vertical timeline stepper */
+                    .timeline { position: relative; padding-left: 32px; margin-bottom: 24px; }
+                    .timeline::before { content: ''; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px; background: #e0e0e0; }
+                    .tl-step { position: relative; padding-bottom: 24px; }
+                    .tl-step:last-child { padding-bottom: 0; }
+                    .tl-dot { position: absolute; left: -32px; top: 2px; width: 24px; height: 24px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: .65rem; color: #fff; z-index: 1; }
+                    .tl-dot.done { background: #4caf50; }
+                    .tl-dot.current { background: var(--uva-orange); animation: pulse 1.5s infinite; }
+                    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,107,0,.4); } 50% { box-shadow: 0 0 0 8px rgba(255,107,0,0); } }
+                    .tl-label { font-size: .9rem; font-weight: 600; color: #999; }
+                    .tl-label.active { color: #333; }
+                    .tl-label.done { color: #4caf50; }
+                    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+                    .info-box { background: var(--uva-gray); border-radius: 8px; padding: 12px; }
+                    .info-box .lbl { font-size: .7rem; text-transform: uppercase; color: #999; letter-spacing: .5px; }
+                    .info-box .val { font-size: .95rem; font-weight: 600; margin-top: 2px; }
+                    .cancelled-banner { background: #ffebee; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 20px; }
+                    .cancelled-banner span { font-size: 1.1rem; font-weight: 600; color: #c62828; }
+                    footer { text-align: center; padding: 20px; font-size: .75rem; color: #aaa; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🛵 <t t-esc="lang.get('title', 'Delivery Tracking')"/></h1>
+                        <div class="ref"><t t-esc="delivery.uva_delivery_id"/></div>
+                    </div>
+
+                    <div id="map"></div>
+
+                    <div class="eta-bar" id="etaBar">
+                        <div class="eta-label"><t t-esc="lang.get('eta', 'Estimated Arrival')"/></div>
+                        <div class="eta-value" id="etaValue">
+                            <t t-if="delivery.eta_minutes">
+                                <t t-esc="delivery.eta_minutes"/> min
+                            </t>
+                            <t t-else="">--</t>
+                        </div>
+                        <div class="eta-sub" id="etaSub"><t t-esc="lang.get('updating', 'Updating live...')"/></div>
+                    </div>
+
+                    <div class="content">
+                        <t t-if="delivery.state in ('cancelled', 'failed')">
+                            <div class="cancelled-banner">
+                                <span>Delivery <t t-esc="delivery.state.replace('_',' ').title()"/></span>
+                            </div>
+                        </t>
+
+                        <t t-set="steps" t-value="[('pending', lang.get('pending', 'Order Placed')),('assigned', lang.get('assigned', 'Driver Assigned')),('in_transit', lang.get('in_transit', 'On the Way')),('delivered', lang.get('delivered', 'Delivered'))]"/>
+                        <t t-set="state_order" t-value="['pending','assigned','in_transit','delivered']"/>
+                        <t t-set="current_idx" t-value="state_order.index(delivery.state) if delivery.state in state_order else -1"/>
+
+                        <div class="timeline" id="timeline">
+                            <t t-foreach="steps" t-as="s">
+                                <t t-set="idx" t-value="s_index"/>
+                                <div class="tl-step">
+                                    <div t-attf-class="tl-dot #{'done' if idx &lt; current_idx else 'current' if idx == current_idx else ''}">
+                                        <t t-if="idx &lt; current_idx">✓</t>
+                                    </div>
+                                    <div t-attf-class="tl-label #{'done' if idx &lt; current_idx else 'active' if idx == current_idx else ''}">
+                                        <t t-esc="s[1]"/>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-box">
+                                <div class="lbl"><t t-esc="lang.get('status', 'Status')"/></div>
+                                <div class="val" id="statusVal"><t t-esc="dict(delivery._fields['state'].selection).get(delivery.state, delivery.state)"/></div>
+                            </div>
+                            <div class="info-box">
+                                <div class="lbl"><t t-esc="lang.get('last_updated', 'Last Updated')"/></div>
+                                <div class="val" id="updatedVal"><t t-esc="delivery.last_status_at or delivery.write_date"/></div>
+                            </div>
+                            <t t-if="delivery.driver_name">
+                                <div class="info-box">
+                                    <div class="lbl"><t t-esc="lang.get('driver', 'Driver')"/></div>
+                                    <div class="val">Assigned ✓</div>
+                                </div>
+                            </t>
+                        </div>
+
+                        <button id="notifyBtn" onclick="requestNotify()" style="display:block;width:100%;padding:12px;margin-bottom:20px;background:var(--uva-orange);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;">
+                            🔔 <t t-esc="lang.get('notify_btn', 'Notify me when arriving')"/>
+                        </button>
+
+                        <t t-if="delivery.state == 'delivered' and delivery.proof_photo_url">
+                            <div class="info-box" style="grid-column: 1/-1">
+                                <div class="lbl">Proof of Delivery</div>
+                                <img t-att-src="delivery.proof_photo_url" style="max-width:100%;border-radius:8px;margin-top:8px;"/>
+                            </div>
+                        </t>
+                    </div>
+                    <footer><t t-esc="lang.get('footer', 'Powered by')"/> <b style="color:var(--uva-orange)">Uva PR</b> × Odoo</footer>
+                </div>
+
+                <!-- Safe data passing: JSON in data attribute, parsed in JS -->
+                <div id="trackingData" t-att-data-tracking="tracking_data_json" style="display:none;"/>
+
+                <script>
+                    var notifyEnabled = false;
+                    function requestNotify() {
+                        if (!('Notification' in window)) return;
+                        Notification.requestPermission().then(function(perm) {
+                            if (perm === 'granted') {
+                                notifyEnabled = true;
+                                var btn = document.getElementById('notifyBtn');
+                                btn.textContent = '🔔 ' + (cfg.lang &amp;&amp; cfg.lang.notify_on || 'Notifications enabled');
+                                btn.disabled = true;
+                            }
+                        });
+                    }
+                    var cfg, trackingId, stateLabels;
+                    var lastNotifiedState = null;
+                    (function() {
+                        var raw = document.getElementById('trackingData').getAttribute('data-tracking');
+                        cfg = JSON.parse(raw);
+                        trackingId = cfg.tracking_id;
+                        var lat = cfg.driver_lat || cfg.delivery_lat || 18.4655;
+                        var lng = cfg.driver_lng || cfg.delivery_lng || -66.1057;
+                        var stateOrder = ['pending','assigned','in_transit','delivered'];
+                        var L = cfg.lang || {};
+                        stateLabels = {
+                            'pending': L.pending || 'Pending',
+                            'assigned': L.assigned || 'Driver Assigned',
+                            'in_transit': L.in_transit || 'In Transit',
+                            'delivered': L.delivered || 'Delivered',
+                            'cancelled': L.cancelled || 'Cancelled',
+                            'failed': L.failed || 'Failed'
+                        };
+
+                        var map = window.L.map('map').setView([lat, lng], 15);
+                        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '© OpenStreetMap'
+                        }).addTo(map);
+                        var marker = window.L.marker([lat, lng]).addTo(map);
+
+                        function updateTimeline(st) {
+                            var idx = stateOrder.indexOf(st);
+                            var dots = document.querySelectorAll('.tl-dot');
+                            var labels = document.querySelectorAll('.tl-label');
+                            dots.forEach(function(d, i) {
+                                d.className = 'tl-dot' + (i &lt; idx ? ' done' : (i === idx ? ' current' : ''));
+                                d.textContent = i &lt; idx ? '✓' : '';
+                            });
+                            labels.forEach(function(l, i) {
+                                l.className = 'tl-label' + (i &lt; idx ? ' done' : (i === idx ? ' active' : ''));
+                            });
+                        }
+
+                        function poll() {
+                            fetch('/uva/track/' + trackingId + '/status')
+                                .then(function(r) { return r.json(); })
+                                .then(function(d) {
+                                    if (d.driver_lat &amp;&amp; d.driver_lng) {
+                                        marker.setLatLng([d.driver_lat, d.driver_lng]);
+                                        map.panTo([d.driver_lat, d.driver_lng]);
+                                    }
+                                    document.getElementById('etaValue').textContent = d.eta_minutes ? d.eta_minutes + ' min' : '--';
+                                    document.getElementById('statusVal').textContent = stateLabels[d.state] || d.state;
+                                    document.getElementById('updatedVal').textContent = d.updated_at || '';
+                                    updateTimeline(d.state);
+                                    if (notifyEnabled &amp;&amp; d.state !== lastNotifiedState) {
+                                        lastNotifiedState = d.state;
+                                        if (d.state === 'in_transit') {
+                                            new Notification('🛵 ' + (stateLabels.in_transit || 'On the way!'), {
+                                                body: d.eta_minutes ? 'ETA: ' + d.eta_minutes + ' min' : '',
+                                                icon: '/odoo_uva_connector/static/description/icon.png'
+                                            });
+                                        } else if (d.state === 'delivered') {
+                                            new Notification('✅ ' + (stateLabels.delivered || 'Delivered!'), {
+                                                body: cfg.lang &amp;&amp; cfg.lang.final || 'Your order has arrived.',
+                                                icon: '/odoo_uva_connector/static/description/icon.png'
+                                            });
+                                        }
+                                    }
+                                    if (d.state === 'delivered' || d.state === 'cancelled' || d.state === 'failed') {
+                                        document.getElementById('etaSub').textContent = cfg.lang &amp;&amp; cfg.lang.final || 'Final status';
+                                        clearInterval(pollInterval);
+                                    }
+                                })
+                                .catch(function() {});
+                        }
+
+                        var pollInterval = setInterval(poll, 15000);
+                    })();
+                </script>
+            </body>
+        </html>
+    </template>
+</odoo>

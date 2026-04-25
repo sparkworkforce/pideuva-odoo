@@ -3,57 +3,182 @@
 <head>
     <meta charset="UTF-8"/>
     <title>Uva PR Connector</title>
+    <style>
+        :root { --uva-orange: #ff6b00; --uva-dark: #e05e00; --gray-bg: #f8f8f8; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; color: #333; line-height: 1.6; }
+        .hero { background: linear-gradient(135deg, var(--uva-orange) 0%, #ff8c33 100%); color: #fff; padding: 56px 24px; text-align: center; border-radius: 0 0 12px 12px; }
+        .hero h1 { font-size: 2.4em; margin: 0 0 12px; }
+        .hero p { font-size: 1.15em; margin: 0 0 6px; opacity: 0.95; }
+        .hero .sub { font-size: 0.95em; opacity: 0.8; }
+        section { padding: 36px 24px; max-width: 960px; margin: 0 auto; }
+        h2 { text-align: center; color: var(--uva-orange); margin-top: 0; }
+        .flows { display: flex; flex-wrap: wrap; gap: 24px; }
+        .flow-card { flex: 1; min-width: 280px; border-radius: 10px; padding: 24px; }
+        .flow-a { background: #fff5ee; border: 2px solid #ffe0cc; }
+        .flow-b { background: #edf7ed; border: 2px solid #c8e6c9; }
+        .flow-card h3 { margin-top: 0; }
+        .flow-card ul { padding-left: 20px; }
+        .features { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .feature { flex: 0 1 200px; text-align: center; padding: 16px; }
+        .feature .icon { font-size: 2.2em; }
+        .feature h4 { margin: 8px 0 4px; font-size: 0.95em; }
+        .feature p { font-size: 0.85em; color: #666; margin: 0; }
+        .screenshot-placeholder { background: #e0e0e0; border-radius: 8px; padding: 48px 24px; text-align: center; color: #888; font-style: italic; margin: 16px 0; }
+        .screenshots { background: var(--gray-bg); border-radius: 10px; padding: 36px 24px; max-width: 960px; margin: 0 auto; }
+        .req-list { max-width: 520px; margin: 0 auto; padding-left: 20px; line-height: 2; }
+        .support { background: var(--gray-bg); border-radius: 10px; text-align: center; padding: 32px 24px; max-width: 960px; margin: 24px auto; }
+        .support a { color: var(--uva-orange); }
+        .versions { border-collapse: collapse; margin: 0 auto; font-size: 0.95em; }
+        .versions th { border-bottom: 2px solid var(--uva-orange); padding: 8px 24px; text-align: left; }
+        .versions td { padding: 8px 24px; border-bottom: 1px solid #e0e0e0; }
+    </style>
 </head>
 <body>
 
-<section class="oe_container">
-    <div class="oe_row oe_spaced">
-        <h2 class="oe_slogan">Uva PR Connector</h2>
-        <h3 class="oe_slogan">Integrate Odoo POS and delivery with Uva PR — Puerto Rico's local delivery platform</h3>
-    </div>
-</section>
+<!-- Hero -->
+<div class="hero">
+    <h1>🛵 Uva PR Connector</h1>
+    <p>Receive Uva orders in your POS &amp; dispatch deliveries with Uva Fleet — all from Odoo.</p>
+    <p class="sub">Puerto Rico's local delivery platform, integrated natively with Odoo Enterprise.</p>
+</div>
 
-<section class="oe_container oe_dark">
-    <div class="oe_row oe_spaced">
-        <div class="oe_span6">
-            <h2>Flow A — Incoming Orders (POS Connector)</h2>
-            <p>Uva customer orders appear automatically in the Odoo POS interface.
-            Staff can accept, reject, or mark items as unavailable directly from POS —
-            without touching the Uva app.</p>
+<!-- Two Flows -->
+<section>
+    <h2>Two Integration Flows</h2>
+    <div class="flows">
+        <div class="flow-card flow-a">
+            <h3>📥 Flow A — Incoming Orders</h3>
+            <p>Uva customer orders appear <strong>automatically in your POS</strong>. Staff accept, reject, or mark items unavailable — without leaving the register.</p>
             <ul>
-                <li>Webhook + polling fallback ingestion</li>
-                <li>Real-time POS notification via bus.bus</li>
-                <li>Configurable auto-accept timeout</li>
+                <li>Real-time popup with sound notification</li>
+                <li>Configurable auto-accept timer</li>
+                <li>Mark individual items as unavailable</li>
+                <li>Order queue for busy periods</li>
                 <li>Multi-store support</li>
-                <li>Product mapping table</li>
             </ul>
         </div>
-        <div class="oe_span6">
-            <h2>Flow B — Outbound Delivery (Uva Fleet)</h2>
-            <p>Dispatch deliveries via Uva Fleet drivers directly from Odoo sale orders
-            or stock pickings. Real-time tracking status posted to Odoo chatters.</p>
+        <div class="flow-card flow-b">
+            <h3>📦 Flow B — Uva Fleet Delivery</h3>
+            <p>Dispatch deliveries via <strong>Uva Fleet drivers</strong> directly from sale orders or stock pickings.</p>
             <ul>
                 <li>Cost estimate before dispatch</li>
-                <li>Dispatch from sale order or stock picking</li>
-                <li>Real-time status tracking</li>
-                <li>Cancellation from Odoo</li>
+                <li>Native <code>delivery.carrier</code> integration</li>
+                <li>Real-time status tracking via chatter</li>
+                <li>Cancel deliveries from Odoo</li>
                 <li>Automatic retry on transient failures</li>
             </ul>
         </div>
     </div>
 </section>
 
-<section class="oe_container">
-    <div class="oe_row oe_spaced">
-        <h2>Compatibility</h2>
-        <p>Supports Odoo 17, 18, and 19 Enterprise. Deployable on Odoo.sh.</p>
-        <h2>Demo Mode</h2>
-        <p>Enabled by default. Evaluate the full integration without real Uva credentials.
-        Disable demo mode and enter your API keys when ready for production.</p>
-        <h2>License</h2>
-        <p>OPL-1 — <a href="https://www.odoo.com/documentation/17.0/legal/licenses.html">Odoo Proprietary License v1.0</a></p>
+<!-- Feature Grid -->
+<section style="background: var(--gray-bg); border-radius: 10px;">
+    <h2>✨ Features</h2>
+    <div class="features">
+        <div class="feature">
+            <div class="icon">🔔</div>
+            <h4>Real-Time Notifications</h4>
+            <p>Orders arrive instantly in POS via bus.bus with sound alerts.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">🧙</div>
+            <h4>Guided Setup Wizard</h4>
+            <p>Step-by-step wizard configures credentials, store, and POS link.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">🗂️</div>
+            <h4>Bulk Product Mapping</h4>
+            <p>Map Uva products to Odoo products one-by-one or in bulk.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">💚</div>
+            <h4>Health Monitoring</h4>
+            <p>Green / yellow / red connection status with automatic alerts.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">🔄</div>
+            <h4>Automatic Retry Queue</h4>
+            <p>Failed API calls are queued and retried — no orders lost.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">🔒</div>
+            <h4>Secure by Default</h4>
+            <p>HMAC webhook validation, admin-only API keys, PII auto-purge.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">📊</div>
+            <h4>Dashboard &amp; Analytics</h4>
+            <p>KPI dashboard with order volume, acceptance rate, and fleet stats.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">🏢</div>
+            <h4>Multi-Company</h4>
+            <p>Full multi-company isolation — each company sees only its own data.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">🗺️</div>
+            <h4>Delivery Map View</h4>
+            <p>Embedded OpenStreetMap showing pickup and delivery locations.</p>
+        </div>
+        <div class="feature">
+            <div class="icon">🧪</div>
+            <h4>Demo &amp; Sandbox Mode</h4>
+            <p>Explore with mock data or test against the Uva sandbox API.</p>
+        </div>
     </div>
 </section>
+
+<!-- Screenshots -->
+<div class="screenshots">
+    <h2>📸 Screenshots</h2>
+    <div class="screenshot-placeholder" role="img" aria-label="Screenshot: POS order popup showing an incoming Uva order with accept, reject, and mark-unavailable buttons">
+        POS Order Popup — incoming Uva order with action buttons
+    </div>
+    <div class="screenshot-placeholder" role="img" aria-label="Screenshot: Uva store configuration form with API credentials, polling settings, and connection health indicator">
+        Store Configuration — API credentials, polling, and health status
+    </div>
+    <div class="screenshot-placeholder" role="img" aria-label="Screenshot: Uva Fleet delivery form showing tracking URL, driver info, and embedded map">
+        Fleet Delivery — tracking, driver info, and map view
+    </div>
+    <div class="screenshot-placeholder" role="img" aria-label="Screenshot: Uva dashboard with KPI cards for today's orders, acceptance rate, and active deliveries">
+        Dashboard — order KPIs, acceptance rate, fleet stats
+    </div>
+    <div class="screenshot-placeholder" role="img" aria-label="Screenshot: Bulk product mapping wizard matching Uva products to Odoo products">
+        Bulk Product Mapping Wizard
+    </div>
+</div>
+
+<!-- Supported Versions -->
+<section>
+    <h2>📋 Supported Versions</h2>
+    <table class="versions">
+        <thead>
+            <tr><th>Odoo Version</th><th>Python</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Odoo 17 Enterprise</td><td>3.10+</td><td>✅ Supported</td></tr>
+            <tr><td>Odoo 18 Enterprise</td><td>3.11+</td><td>✅ Supported</td></tr>
+            <tr><td>Odoo 19 Enterprise</td><td>3.11+</td><td>✅ Supported</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- Requirements -->
+<section>
+    <h2>📦 Requirements</h2>
+    <ul class="req-list">
+        <li>Odoo Enterprise on <a href="https://www.odoo.sh">Odoo.sh</a></li>
+        <li>Active Uva / Uva Fleet API credentials</li>
+        <li>Odoo modules: <code>point_of_sale</code>, <code>delivery</code>, <code>sale_stock</code>, <code>mail</code>, <code>base_setup</code></li>
+    </ul>
+</section>
+
+<!-- Support -->
+<div class="support">
+    <h2>💬 Support</h2>
+    <p><strong>Spark Workforce LLC</strong> — <a href="https://sparkworkforce.com">sparkworkforce.com</a></p>
+    <p>📧 <a href="mailto:info+fleet@pideuva.com">info+fleet@pideuva.com</a></p>
+</div>
 
 </body>
 </html>

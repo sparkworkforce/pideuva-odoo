@@ -73,17 +73,32 @@ class UvaApiClient(models.AbstractModel):
     def _get_timeout(self):
         """Return (connect_timeout, read_timeout) from config or defaults."""
         ICP = self.env['ir.config_parameter'].sudo()
-        connect = int(ICP.get_param('uva.api.connect_timeout', _DEFAULT_CONNECT_TIMEOUT))
-        read = int(ICP.get_param('uva.api.read_timeout', _DEFAULT_READ_TIMEOUT))
+        try:
+            connect = int(ICP.get_param('uva.api.connect_timeout', _DEFAULT_CONNECT_TIMEOUT))
+        except (ValueError, TypeError):
+            connect = _DEFAULT_CONNECT_TIMEOUT
+        try:
+            read = int(ICP.get_param('uva.api.read_timeout', _DEFAULT_READ_TIMEOUT))
+        except (ValueError, TypeError):
+            read = _DEFAULT_READ_TIMEOUT
         return (connect, read)
 
-    def _get_base_url(self):
-        """Return Uva API base URL from config.
-        # TODO(uva-api): confirm production base URL"""
-        ICP = self.env['ir.config_parameter'].sudo()
-        return ICP.get_param('uva.api.base_url', 'https://api.pideuva.com/v1')
+    def _get_base_url(self, sandbox_mode=False):
+        """Return Uva API base URL. See doc/api_compatibility.md.
 
-    def _request(self, method, path, api_key, demo_mode=False, **kwargs):
+        Args:
+            sandbox_mode: If True, use sandbox URL. Callers pass the
+                          store-level sandbox_mode field value.
+        """
+        ICP = self.env['ir.config_parameter'].sudo()
+        if sandbox_mode or ICP.get_param('uva.api.sandbox_mode', 'False') in ('True', '1', 'true'):
+            return ICP.get_param('uva.api.sandbox_url', 'https://sandbox.pideuva.com/v1')
+        url = ICP.get_param('uva.api.base_url', 'https://api.pideuva.com/v1')
+        if not url.startswith('https://'):
+            raise UvaApiError("Uva API base URL must use HTTPS")
+        return url
+
+    def _request(self, method, path, api_key, demo_mode=False, sandbox_mode=False, **kwargs):
         """Execute an authenticated HTTP request to the Uva API.
 
         Raises:
@@ -95,7 +110,7 @@ class UvaApiClient(models.AbstractModel):
             # Demo mode: never reaches the network
             return None
 
-        base_url = self._get_base_url()
+        base_url = self._get_base_url(sandbox_mode=sandbox_mode)
         url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
         timeout = self._get_timeout()
         headers = {
@@ -121,7 +136,7 @@ class UvaApiClient(models.AbstractModel):
             raise UvaAuthError(
                 f"Uva API auth error {response.status_code}", status_code=response.status_code
             )
-        # TODO(uva-api): confirm coverage error HTTP status and error code
+        # Coverage error — see doc/api_compatibility.md
         if response.status_code == 422:
             try:
                 body = response.json()
@@ -138,6 +153,43 @@ class UvaApiClient(models.AbstractModel):
             )
         return response
 
+    def _request_json(self, method, path, api_key, demo_mode=False, **kwargs):
+        """Execute request and parse JSON response safely.
+
+        Raises UvaApiError if response is not valid JSON.
+        """
+        resp = self._request(method, path, api_key, demo_mode=demo_mode, **kwargs)
+        if resp is None:
+            return {}  # demo mode
+        try:
+            return resp.json()
+        except (ValueError, AttributeError) as exc:
+            raise UvaApiError(
+                f"Uva API returned non-JSON response: {resp.text[:200]}"
+            ) from exc
+
+    # ------------------------------------------------------------------
+    # Health check
+    # ------------------------------------------------------------------
+
+    def health_check(self, api_key: str, demo_mode: bool = False) -> bool:
+        """Ping the Uva API to verify connectivity and credentials."""
+        if demo_mode:
+            return True
+        self._request('GET', '/health', api_key)
+        return True
+
+    # ------------------------------------------------------------------
+    # Product catalog
+    # ------------------------------------------------------------------
+
+    def get_products(self, api_key: str, store_id: str, demo_mode: bool = False) -> list:
+        """Fetch product catalog from Uva for a store."""
+        if demo_mode:
+            return []
+        data = self._request_json('GET', '/products', api_key, params={'store_id': store_id})
+        return data.get('products', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+
     # ------------------------------------------------------------------
     # HMAC validation (pure — no network, no ORM)
     # ------------------------------------------------------------------
@@ -146,12 +198,13 @@ class UvaApiClient(models.AbstractModel):
         """Validate HMAC-SHA256 signature on an incoming webhook payload.
 
         Normalizes the signature header — Uva may send "sha256=<hex>" or plain "<hex>".
-        # TODO(uva-api): confirm signature format from Uva docs
 
         Uses constant-time comparison to prevent timing attacks.
         Returns True if valid, False otherwise — never raises.
         """
         try:
+            if not signature:
+                return False
             # Normalize: strip "sha256=" prefix if present
             sig = signature.removeprefix('sha256=') if signature.startswith('sha256=') else signature
             computed = hmac.new(
@@ -170,19 +223,17 @@ class UvaApiClient(models.AbstractModel):
                    demo_mode: bool = False) -> list:
         """Poll Uva Orders API for new orders since the given timestamp.
 
-        # TODO(uva-api): confirm endpoint path, query params, and response schema
         Returns list of raw order dicts.
         """
         if demo_mode:
             _logger.debug("Uva demo mode: get_orders returning []")
             return []
 
-        # TODO(uva-api): implement real polling call
-        # Expected: GET /orders?store_id={store_id}&since={since.isoformat()}
-        raise NotImplementedError(
-            "TODO(uva-api): get_orders endpoint not yet confirmed. "
-            "Implement once Uva Orders API docs are received."
-        )
+        params = {'store_id': store_id}
+        if since:
+            params['since'] = since.isoformat()
+        data = self._request_json('GET', '/orders', api_key, params=params)
+        return data.get('orders', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
 
     def confirm_order(self, api_key: str, external_id: str, action: str,
                       items: list = None, demo_mode: bool = False) -> bool:
@@ -190,8 +241,6 @@ class UvaApiClient(models.AbstractModel):
 
         action: one of 'accept', 'reject', 'modify'
         items: list of unavailable item IDs (required when action='modify')
-
-        # TODO(uva-api): confirm callback endpoint path and payload schema
         """
         if demo_mode:
             _logger.info(
@@ -200,13 +249,9 @@ class UvaApiClient(models.AbstractModel):
             )
             return True
 
-        # TODO(uva-api): implement real callback
-        # Expected: POST /orders/{external_id}/status
-        # Payload: {"action": action, "unavailable_items": items or []}
-        raise NotImplementedError(
-            "TODO(uva-api): confirm_order endpoint not yet confirmed. "
-            "Implement once Uva Orders API docs are received."
-        )
+        resp = self._request('POST', f'/orders/{external_id}/status', api_key,
+                             json={'action': action, 'unavailable_items': items or []})
+        return resp.status_code == 200
 
     # ------------------------------------------------------------------
     # Flow B — Fleet API
@@ -217,24 +262,18 @@ class UvaApiClient(models.AbstractModel):
         """Request a delivery cost estimate from Uva Fleet.
 
         Returns: {'amount': float, 'currency': str, 'eta_minutes': int}
-        # TODO(uva-api): confirm estimate endpoint path and payload schema
         """
         if demo_mode:
             return {'amount': 5.00, 'currency': 'USD', 'eta_minutes': 30}
 
-        # TODO(uva-api): implement real estimate call
-        # Expected: POST /fleet/estimate
-        # Payload: {"pickup": pickup, "destination": destination}
-        raise NotImplementedError(
-            "TODO(uva-api): get_delivery_estimate endpoint not yet confirmed."
-        )
+        return self._request_json('POST', '/fleet/estimate', api_key,
+                                  json={'pickup': pickup, 'destination': destination})
 
     def create_delivery(self, api_key: str, pickup: dict, destination: dict,
                         reference: str, demo_mode: bool = False) -> dict:
         """Create a Uva Fleet delivery order.
 
         Returns: {'delivery_id': str, 'tracking_url': str}
-        # TODO(uva-api): confirm create endpoint path and payload schema
         """
         if demo_mode:
             return {
@@ -242,11 +281,9 @@ class UvaApiClient(models.AbstractModel):
                 'tracking_url': '#',
             }
 
-        # TODO(uva-api): implement real create call
-        # Expected: POST /fleet/deliveries
-        raise NotImplementedError(
-            "TODO(uva-api): create_delivery endpoint not yet confirmed."
-        )
+        return self._request_json('POST', '/fleet/deliveries', api_key,
+                                  json={'pickup': pickup, 'destination': destination,
+                                        'reference': reference})
 
     def cancel_delivery(self, api_key: str, delivery_id: str,
                         demo_mode: bool = False) -> bool:
@@ -255,30 +292,21 @@ class UvaApiClient(models.AbstractModel):
         Returns True on success.
         Raises UvaCoverageError if cancellation is rejected for coverage reasons.
         Raises UvaApiError on transient failure.
-        # TODO(uva-api): confirm cancel endpoint path and error codes
         """
         if demo_mode:
             _logger.info("Uva demo mode: cancel_delivery delivery_id=%s", delivery_id)
             return True
 
-        # TODO(uva-api): implement real cancel call
-        # Expected: DELETE /fleet/deliveries/{delivery_id}
-        raise NotImplementedError(
-            "TODO(uva-api): cancel_delivery endpoint not yet confirmed."
-        )
+        resp = self._request('DELETE', f'/fleet/deliveries/{delivery_id}', api_key)
+        return resp.status_code in (200, 204)
 
     def get_delivery_status(self, api_key: str, delivery_id: str,
                              demo_mode: bool = False) -> dict:
         """Poll the status of a Uva Fleet delivery.
 
         Returns: {'status': str, 'updated_at': datetime}
-        # TODO(uva-api): confirm status polling endpoint path and response schema
         """
         if demo_mode:
             return {'status': 'pending', 'updated_at': datetime.utcnow()}
 
-        # TODO(uva-api): implement real status poll
-        # Expected: GET /fleet/deliveries/{delivery_id}/status
-        raise NotImplementedError(
-            "TODO(uva-api): get_delivery_status endpoint not yet confirmed."
-        )
+        return self._request_json('GET', f'/fleet/deliveries/{delivery_id}/status', api_key)

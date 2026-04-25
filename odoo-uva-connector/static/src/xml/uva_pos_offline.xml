@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="odoo_uva_connector.UvaPosOffline">
+        <div t-if="state.offline"
+             class="uva-offline-banner bg-danger text-white text-center py-1 fw-bold"
+             style="position:fixed;top:0;left:0;right:0;z-index:9999;"
+             data-testid="uva-offline-banner">
+            Uva: Offline
+        </div>
+        <div t-if="state.reconnected"
+             class="uva-reconnected-banner bg-success text-white text-center py-1 fw-bold"
+             style="position:fixed;top:0;left:0;right:0;z-index:9999;"
+             data-testid="uva-reconnected-banner">
+            Uva: Reconnected
+        </div>
+    </t>
+</templates>

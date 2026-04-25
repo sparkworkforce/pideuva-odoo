@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 -->
+<odoo>
+
+    <!-- Onboarding banner in Settings -->
+    <record id="view_res_config_settings_uva_onboarding" model="ir.ui.view">
+        <field name="name">res.config.settings.uva.onboarding</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="odoo_uva_connector.view_res_config_settings_uva_fleet"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='uva_fleet_settings']" position="before">
+                <div class="o_notification_alert alert alert-warning"
+                     invisible="uva_setup_complete or uva_onboarding_state == 'closed'"
+                     role="alert">
+                    <div class="d-flex align-items-center">
+                        <span class="fa fa-exclamation-triangle me-2"/>
+                        <div class="flex-grow-1">
+                            <strong>Uva Connector Setup Incomplete</strong>
+                            <div class="text-muted small mt-1">
+                                Complete these steps to start receiving orders:
+                                <ul class="mb-0 mt-1">
+                                    <li>Configure API credentials (or enable Demo Mode)</li>
+                                    <li>Create at least one Store Configuration</li>
+                                    <li>Add at least one Product Mapping</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm ms-3"
+                                type="action"
+                                name="%(odoo_uva_connector.action_uva_setup_wizard)d">
+                            Start Setup
+                        </button>
+                        <button class="btn btn-link btn-sm ms-2"
+                                type="object"
+                                name="action_close_uva_onboarding">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//div[@id='uva_fleet_settings']" position="inside">
+                <field name="uva_onboarding_state" invisible="1"/>
+                <field name="uva_setup_complete" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

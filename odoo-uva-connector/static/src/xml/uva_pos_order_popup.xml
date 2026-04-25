@@ -16,11 +16,24 @@
                                   class="badge bg-light text-dark ms-2"
                                   t-esc="props.storeConfig.storeName"/>
                         </h5>
-                        <span t-if="state.countdown > 0"
-                              class="badge bg-warning text-dark"
-                              data-testid="uva-countdown">
-                            Auto-accept in <t t-esc="state.countdown"/>s
-                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span t-if="queueLength > 0"
+                                  class="badge bg-info"
+                                  data-testid="uva-queue-badge">
+                                +<t t-esc="queueLength"/> more
+                            </span>
+                            <button class="btn btn-sm btn-outline-light"
+                                    data-testid="uva-sound-toggle"
+                                    t-on-click="toggleSound">
+                                <t t-if="state.soundEnabled">🔊</t>
+                                <t t-else="">🔇</t>
+                            </button>
+                            <span t-if="state.countdown > 0"
+                                  t-att-class="'badge ' + (state.countdown &lt;= 10 ? 'uva-countdown-critical' : state.countdown &lt;= 30 ? 'uva-countdown-urgent' : 'bg-warning text-dark')"
+                                  data-testid="uva-countdown">
+                                Auto-accept in <t t-esc="state.countdown"/>s
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Order details -->
@@ -29,43 +42,123 @@
                             Order ID: <strong t-esc="state.currentOrder.external_id"/>
                         </p>
 
+                        <!-- Customer section -->
+                        <div class="mb-3 uva-customer-section" data-testid="uva-customer-section">
+                            <h6>Customer</h6>
+                            <div t-if="state.currentOrder.customer_name" class="mb-1">
+                                <strong>Name:</strong> <t t-esc="state.currentOrder.customer_name"/>
+                            </div>
+                            <div t-if="state.currentOrder.delivery_address" class="mb-1">
+                                <strong>Address:</strong> <t t-esc="state.currentOrder.delivery_address"/>
+                            </div>
+                            <div t-if="state.currentOrder.phone" class="mb-1">
+                                <strong>Phone:</strong> <t t-esc="state.currentOrder.phone"/>
+                            </div>
+                            <div t-if="!state.currentOrder.customer_name and !state.currentOrder.delivery_address and !state.currentOrder.phone"
+                                 class="text-muted small">No customer info available</div>
+                        </div>
+
+                        <!-- Order total -->
+                        <div t-if="state.currentOrder.total_amount !== undefined and state.currentOrder.total_amount !== null"
+                             class="mb-3" data-testid="uva-order-total">
+                            <h6>Total</h6>
+                            <span class="fs-5 fw-bold">
+                                <t t-esc="state.currentOrder.currency or '$'"/>
+                                <t t-esc="state.currentOrder.total_amount"/>
+                            </span>
+                        </div>
+
+                        <!-- Special instructions -->
+                        <div t-if="state.currentOrder.notes"
+                             class="mb-3" data-testid="uva-special-instructions">
+                            <h6>Special Instructions</h6>
+                            <div class="alert alert-info mb-0 py-2">
+                                <t t-esc="state.currentOrder.notes"/>
+                            </div>
+                        </div>
+
                         <!-- Items list -->
                         <div t-if="state.currentOrder.items and state.currentOrder.items.length"
                              class="uva-order-items">
                             <h6>Items</h6>
-                            <ul class="list-group">
-                                <t t-foreach="state.currentOrder.items" t-as="item" t-key="item.product_id">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center"
-                                        t-att-class="state.unavailableItems.has(item.product_id) ? 'list-group-item-danger' : ''">
-                                        <span>
-                                            <t t-esc="item.name or item.product_id"/>
-                                            <span class="badge bg-secondary ms-1"
-                                                  t-esc="'x' + (item.qty or 1)"/>
-                                        </span>
-                                        <button class="btn btn-sm"
-                                                t-att-class="state.unavailableItems.has(item.product_id) ? 'btn-danger' : 'btn-outline-secondary'"
-                                                t-att-data-testid="'item-unavailable-' + item.product_id"
-                                                t-on-click="() => toggleItemUnavailable(item.product_id)">
-                                            <t t-if="state.unavailableItems.has(item.product_id)">
-                                                Unavailable ✓
-                                            </t>
-                                            <t t-else="">
-                                                Mark Unavailable
-                                            </t>
-                                        </button>
-                                    </li>
-                                </t>
-                            </ul>
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:40px"/>
+                                        <th>Product</th>
+                                        <th class="text-center" style="width:60px">Qty</th>
+                                        <th class="text-end" style="width:80px">Price</th>
+                                        <th>Notes</th>
+                                        <th style="width:140px"/>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="state.currentOrder.items" t-as="item" t-key="item.product_id">
+                                        <tr t-att-class="state.unavailableItems[item.product_id] ? 'table-danger' : ''">
+                                            <td style="width:40px">
+                                                <img t-if="item.image_url" t-att-src="item.image_url" style="width:36px;height:36px;object-fit:cover;border-radius:4px;" alt="Product"/>
+                                                <span t-else="" style="display:inline-block;width:36px;height:36px;background:#eee;border-radius:4px;text-align:center;line-height:36px;">📦</span>
+                                            </td>
+                                            <td t-esc="item.name or item.product_id"/>
+                                            <td class="text-center" t-esc="item.qty or item.quantity or 1"/>
+                                            <td class="text-end">
+                                                <t t-if="item.price">
+                                                    <t t-esc="state.currentOrder.currency or '$'"/><t t-esc="item.price"/>
+                                                </t>
+                                            </td>
+                                            <td>
+                                                <small t-if="item.special_instructions or item.notes"
+                                                       class="text-muted"
+                                                       t-esc="item.special_instructions or item.notes"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <button class="btn btn-sm"
+                                                        t-att-class="state.unavailableItems[item.product_id] ? 'btn-danger' : 'btn-outline-secondary'"
+                                                        t-att-data-testid="'item-unavailable-' + item.product_id"
+                                                        t-on-click="() => toggleItemUnavailable(item.product_id)">
+                                                    <t t-if="state.unavailableItems[item.product_id]">Unavailable ✓</t>
+                                                    <t t-else="">Unavailable</t>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
                     <!-- Actions -->
                     <div class="modal-footer">
-                        <!-- Error message shown when RPC fails — popup stays open for retry -->
                         <div t-if="state.error" class="alert alert-danger w-100 mb-2"
                              data-testid="uva-popup-error">
                             <t t-esc="state.error"/>
                         </div>
+                        <button class="btn btn-outline-primary me-auto"
+                                data-testid="uva-print-kitchen-btn"
+                                t-on-click="printKitchenTicket">
+                            🖨️ Print Kitchen Ticket
+                        </button>
+                        <button t-if="state.currentOrder and state.currentOrder.state === 'accepted'"
+                                class="btn btn-info"
+                                data-testid="uva-start-prep-btn"
+                                t-att-disabled="state.submitting"
+                                t-on-click="onStartPreparing">
+                            🍳 Start Preparing
+                        </button>
+                        <button t-if="state.currentOrder and state.currentOrder.state === 'accepted'"
+                                class="btn btn-outline-success"
+                                data-testid="uva-mark-ready-btn"
+                                t-att-disabled="state.submitting"
+                                t-on-click="onMarkReady">
+                            ✅ Ready
+                        </button>
+                        <button t-if="state.currentOrder and state.currentOrder.state === 'accepted'"
+                                class="btn btn-warning"
+                                data-testid="uva-modify-btn"
+                                t-att-disabled="state.submitting"
+                                t-on-click="onModify">
+                            ✎ Modify
+                        </button>
                         <button class="btn btn-danger"
                                 data-testid="uva-reject-btn"
                                 t-att-disabled="state.submitting"

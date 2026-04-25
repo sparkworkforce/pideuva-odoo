@@ -10,9 +10,14 @@
             <list string="Uva Stores">
                 <field name="name"/>
                 <field name="pos_config_id"/>
+                <field name="company_id"/>
                 <field name="polling_enabled"/>
                 <field name="polling_interval"/>
                 <field name="demo_mode"/>
+                <field name="connection_health" widget="badge"
+                       decoration-success="connection_health == 'ok'"
+                       decoration-warning="connection_health == 'degraded'"
+                       decoration-danger="connection_health == 'down'"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
         </field>
@@ -31,19 +36,36 @@
                             type="object"
                             class="btn-secondary"
                             data-testid="store-config-test-connection-btn"/>
+                    <button name="action_register_webhooks"
+                            string="Register Webhooks"
+                            type="object"
+                            class="btn-secondary"
+                            data-testid="store-config-register-webhooks-btn"/>
+                    <button name="action_sync_menu"
+                            string="Sync Menu"
+                            type="object"
+                            class="btn-secondary"
+                            groups="base.group_system"
+                            invisible="not menu_sync_enabled"
+                            data-testid="store-config-sync-menu-btn"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Demo Mode" bg_color="bg-warning"
-                            attrs="{'invisible': [('demo_mode', '=', False)]}"/>
+                            invisible="not demo_mode"/>
                     <widget name="web_ribbon" title="Inactive" bg_color="bg-danger"
-                            attrs="{'invisible': [('active', '=', True)]}"/>
+                            invisible="active"/>
                     <group>
                         <group string="General">
                             <field name="name" data-testid="store-config-name"/>
                             <field name="pos_config_id" data-testid="store-config-pos"/>
+                            <field name="company_id"/>
                             <field name="active" widget="boolean_toggle"/>
+                            <field name="notification_enabled" widget="boolean_toggle"/>
                             <field name="demo_mode" widget="boolean_toggle"
                                    data-testid="store-config-demo-mode"/>
+                            <field name="sandbox_mode" widget="boolean_toggle"
+                                   invisible="demo_mode"
+                                   data-testid="store-config-sandbox-mode"/>
                         </group>
                         <group string="Credentials" groups="base.group_system">
                             <!-- groups attribute hides these fields from non-admins -->
@@ -58,19 +80,77 @@
                         </group>
                     </group>
                     <group>
+                        <group string="Webhook Configuration">
+                            <field name="webhook_url" readonly="1" widget="CopyClipboardChar"
+                                   data-testid="store-config-webhook-url"/>
+                            <div colspan="2" class="text-muted small">
+                                Fleet webhook URL: <code>{base_url}/uva/webhook/fleet/{company_id}</code>
+                            </div>
+                        </group>
+                    </group>
+                    <group>
                         <group string="Order Acceptance">
                             <field name="auto_accept_timeout"
                                    data-testid="store-config-auto-accept-timeout"/>
+                            <field name="mapping_confidence_threshold"/>
                         </group>
                         <group string="Polling Fallback">
                             <field name="polling_enabled" widget="boolean_toggle"/>
                             <field name="polling_interval"
-                                   attrs="{'invisible': [('polling_enabled', '=', False)]}"
+                                   invisible="not polling_enabled"
                                    data-testid="store-config-polling-interval"/>
                             <field name="last_polled_at" readonly="1"/>
+                            <field name="connection_health" widget="badge"
+                                   decoration-success="connection_health == 'ok'"
+                                   decoration-warning="connection_health == 'degraded'"
+                                   decoration-danger="connection_health == 'down'"
+                                   data-testid="store-config-connection-health"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Delivery Zone">
+                            <field name="store_lat"/>
+                            <field name="store_lng"/>
+                            <field name="delivery_zone_radius" widget="uva_zone_map"/>
+                        </group>
+                        <group string="Menu Sync">
+                            <field name="menu_sync_enabled" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Performance Alerts">
+                            <field name="alert_enabled" widget="boolean_toggle"/>
+                            <field name="alert_acceptance_threshold"
+                                   invisible="not alert_enabled"/>
+                        </group>
+                        <group string="Store Hours">
+                            <field name="store_hours_enabled" widget="boolean_toggle"/>
+                            <field name="opening_time" widget="float_time"
+                                   invisible="not store_hours_enabled"/>
+                            <field name="closing_time" widget="float_time"
+                                   invisible="not store_hours_enabled"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Today's Stats">
+                            <field name="uva_order_count_today"/>
+                            <field name="uva_acceptance_rate"/>
+                            <field name="uva_avg_processing_minutes"/>
+                            <field name="uva_error_rate"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Uva Revenue">
+                            <field name="uva_order_count"/>
+                            <field name="uva_revenue"/>
                         </group>
                     </group>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>
@@ -98,11 +178,6 @@
         <field name="context">{'active_test': False}</field>
     </record>
 
-    <!-- Menu — under Point of Sale > Configuration -->
-    <menuitem id="menu_uva_store_config"
-              name="Uva Stores"
-              parent="point_of_sale.menu_point_config"
-              action="action_uva_store_config"
-              sequence="90"/>
+    <!-- Menu: defined in uva_dashboard_views.xml (re-parented under Uva root) -->
 
 </odoo>

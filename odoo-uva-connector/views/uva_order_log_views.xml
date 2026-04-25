@@ -37,15 +37,35 @@
                             string="Retry"
                             type="object"
                             class="btn-primary"
-                            attrs="{'invisible': [('state', '!=', 'error')]}"
+                            invisible="state != 'error'"
                             data-testid="order-log-retry-btn"/>
                     <!-- action_reject: visible in draft, pending, error -->
                     <button name="action_reject"
                             string="Reject"
                             type="object"
                             class="btn-secondary"
-                            attrs="{'invisible': [('state', 'not in', ['draft', 'pending', 'error'])]}"
+                            invisible="state not in ('draft', 'pending', 'error')"
                             data-testid="order-log-reject-btn"/>
+                    <!-- action_modify: visible in accepted state -->
+                    <button name="action_modify"
+                            string="Modify"
+                            type="object"
+                            class="btn-warning"
+                            invisible="state != 'accepted'"
+                            data-testid="order-log-modify-btn"/>
+                    <!-- Prep tracking (#4) -->
+                    <button name="action_start_preparing"
+                            string="Start Preparing"
+                            type="object"
+                            class="btn-info"
+                            invisible="state != 'accepted' or prep_started_at"
+                            data-testid="order-log-start-prep-btn"/>
+                    <button name="action_mark_ready"
+                            string="Mark Ready"
+                            type="object"
+                            class="btn-success"
+                            invisible="state != 'accepted' or not prep_started_at or prep_ready_at"
+                            data-testid="order-log-mark-ready-btn"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,pending,accepted,done"/>
                 </header>
@@ -60,6 +80,14 @@
                         </group>
                         <group string="POS">
                             <field name="pos_order_id" readonly="1"/>
+                            <field name="tip_amount"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Preparation Tracking">
+                            <field name="prep_started_at" readonly="1"/>
+                            <field name="prep_ready_at" readonly="1"/>
+                            <field name="prep_time_minutes" readonly="1"/>
                         </group>
                     </group>
                     <!-- raw_payload: system admins only (PII) -->
@@ -92,6 +120,11 @@
                 <filter name="done" string="Processed" domain="[('state','=','done')]"/>
                 <filter name="today" string="Today"
                         domain="[('received_at','&gt;=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter name="this_week" string="This Week"
+                        domain="[('received_at','&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="needs_attention" string="Needs Attention"
+                        domain="[('state','in',['draft','pending','error'])]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_store" string="Store" context="{'group_by': 'store_id'}"/>
                     <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
@@ -104,14 +137,9 @@
     <record id="action_uva_order_log" model="ir.actions.act_window">
         <field name="name">Uva Incoming Orders</field>
         <field name="res_model">uva.order.log</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,form,graph,pivot</field>
     </record>
 
-    <!-- Menu -->
-    <menuitem id="menu_uva_order_log"
-              name="Uva Incoming Orders"
-              parent="point_of_sale.menu_point_root"
-              action="action_uva_order_log"
-              sequence="95"/>
+    <!-- Menu: defined in uva_dashboard_views.xml (re-parented under Uva root) -->
 
 </odoo>

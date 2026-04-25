@@ -1,0 +1,131 @@
+# Badge: ![CI](https://github.com/sparkworkforce/odoo-uva-connector/actions/workflows/ci.yml/badge.svg)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        odoo_version: [17, 18, 19]
+        python: ['3.10', '3.11']
+        exclude:
+          - odoo_version: 18
+            python: '3.10'
+          - odoo_version: 19
+            python: '3.10'
+
+    name: Odoo ${{ matrix.odoo_version }} / Python ${{ matrix.python }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: pip install hypothesis
+
+      - name: Run deploy.sh
+        run: bash deploy.sh ${{ matrix.odoo_version }}
+
+      - name: Compile-check all Python files
+        run: python -m compileall -q odoo-uva-connector/
+
+      - name: Validate manifest files and references
+        run: |
+          python3 - <<'PYEOF'
+          import ast, os, sys
+
+          MODULE = "odoo-uva-connector"
+          errors = []
+
+          for ver in ("17", "18", "19"):
+              mf = os.path.join(MODULE, f"__manifest_{ver}__.py")
+              if not os.path.isfile(mf):
+                  errors.append(f"Missing manifest: {mf}")
+                  continue
+              try:
+                  manifest = ast.literal_eval(open(mf).read().split("\n", 2)[-1])
+              except Exception as e:
+                  errors.append(f"Cannot parse {mf}: {e}")
+                  continue
+
+              # Check data files exist
+              for f in manifest.get("data", []):
+                  if not os.path.isfile(os.path.join(MODULE, f)):
+                      errors.append(f"[{mf}] data file missing: {f}")
+
+              # Check asset files exist (strip module prefix)
+              for bundle, files in manifest.get("assets", {}).items():
+                  for f in files:
+                      rel = f.split("/", 1)[1] if "/" in f else f
+                      if not os.path.isfile(os.path.join(MODULE, rel)):
+                          errors.append(f"[{mf}] asset file missing: {f}")
+
+          if errors:
+              for e in errors:
+                  print(f"ERROR: {e}", file=sys.stderr)
+              sys.exit(1)
+          print("✓ All manifests valid, all referenced files exist")
+          PYEOF
+
+      - name: Security check for dangerous patterns
+        run: |
+          echo "Checking for dangerous patterns..."
+          FOUND=0
+          # Raw SQL
+          if grep -rn --include='*.py' -E '\bcr\.execute\b|\.execute\s*\(' odoo-uva-connector/ --exclude-dir=__pycache__ | grep -v '#.*noqa' | grep -v 'test_'; then
+            echo "⚠ Potential raw SQL usage found (review above)"
+            FOUND=1
+          fi
+          # eval/exec
+          if grep -rn --include='*.py' -E '\beval\s*\(|\bexec\s*\(' odoo-uva-connector/ --exclude-dir=__pycache__ | grep -v '#.*noqa' | grep -v 'ast\.literal_eval'; then
+            echo "ERROR: eval/exec usage found"
+            FOUND=2
+          fi
+          # subprocess
+          if grep -rn --include='*.py' -E '\bsubprocess\b' odoo-uva-connector/ --exclude-dir=__pycache__ | grep -v '#.*noqa'; then
+            echo "ERROR: subprocess usage found"
+            FOUND=2
+          fi
+          if [ "$FOUND" -ge 2 ]; then
+            exit 1
+          fi
+          echo "✓ No dangerous patterns found"
+
+      - name: Verify model imports in __init__.py
+        run: |
+          python3 - <<'PYEOF'
+          import os, re, sys
+
+          errors = []
+          MODULE = "odoo-uva-connector"
+
+          for subdir in ("models", "controllers"):
+              init_path = os.path.join(MODULE, subdir, "__init__.py")
+              if not os.path.isfile(init_path):
+                  errors.append(f"Missing {init_path}")
+                  continue
+              init_content = open(init_path).read()
+              imported = set(re.findall(r'from\s+\.\s+import\s+(\w+)', init_content))
+              py_files = {
+                  os.path.splitext(f)[0]
+                  for f in os.listdir(os.path.join(MODULE, subdir))
+                  if f.endswith(".py") and f != "__init__.py"
+              }
+              missing = py_files - imported
+              if missing:
+                  errors.append(f"{init_path} missing imports: {', '.join(sorted(missing))}")
+
+          if errors:
+              for e in errors:
+                  print(f"ERROR: {e}", file=sys.stderr)
+              sys.exit(1)
+          print("✓ All model/controller files imported in __init__.py")
+          PYEOF

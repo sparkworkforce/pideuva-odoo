@@ -6,7 +6,19 @@ access_uva_store_config_admin,uva.store.config,model_uva_store_config,base.group
 access_uva_product_mapping_user,uva.product.mapping,model_uva_product_mapping,base.group_user,1,0,0,0
 access_uva_product_mapping_admin,uva.product.mapping,model_uva_product_mapping,base.group_system,1,1,1,1
 access_uva_order_log_user,uva.order.log,model_uva_order_log,base.group_user,1,0,0,0
+access_uva_order_log_pos,uva.order.log pos,model_uva_order_log,point_of_sale.group_pos_user,1,1,0,0
 access_uva_order_log_admin,uva.order.log,model_uva_order_log,base.group_system,1,1,1,1
 access_uva_fleet_delivery_user,uva.fleet.delivery,model_uva_fleet_delivery,base.group_user,1,0,0,0
 access_uva_fleet_delivery_admin,uva.fleet.delivery,model_uva_fleet_delivery,base.group_system,1,1,1,1
 access_uva_fleet_estimate_wizard_user,uva.fleet.estimate.wizard,model_uva_fleet_estimate_wizard,base.group_user,1,1,1,1
+access_uva_setup_wizard_system,uva.setup.wizard system,model_uva_setup_wizard,base.group_system,1,1,1,1
+access_uva_bulk_mapping_wizard_user,uva.bulk.mapping.wizard,model_uva_bulk_mapping_wizard,base.group_system,1,1,1,1
+access_uva_bulk_mapping_wizard_line_user,uva.bulk.mapping.wizard.line,model_uva_bulk_mapping_wizard_line,base.group_system,1,1,1,1
+access_uva_product_alias_user,uva.product.alias user,model_uva_product_alias,base.group_user,1,0,0,0
+access_uva_product_alias_admin,uva.product.alias admin,model_uva_product_alias,base.group_system,1,1,1,1
+access_uva_menu_sync_user,uva.menu.sync user,model_uva_menu_sync,base.group_user,1,0,0,0
+access_uva_menu_sync_admin,uva.menu.sync admin,model_uva_menu_sync,base.group_system,1,1,1,1
+access_uva_notification_user,uva.notification user,model_uva_notification,base.group_user,1,0,0,0
+access_uva_notification_admin,uva.notification admin,model_uva_notification,base.group_system,1,1,1,1
+access_uva_order_rule_user,uva.order.rule user,model_uva_order_rule,base.group_user,1,0,0,0
+access_uva_order_rule_admin,uva.order.rule admin,model_uva_order_rule,base.group_system,1,1,1,1

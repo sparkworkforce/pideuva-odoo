@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <record id="view_uva_bulk_mapping_wizard_form" model="ir.ui.view">
+        <field name="name">uva.bulk.mapping.wizard.form</field>
+        <field name="model">uva.bulk.mapping.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bulk Product Mapping">
+                <sheet>
+                    <group>
+                        <field name="store_id"
+                               readonly="state != 'draft'"
+                               data-testid="bulk-mapping-store"/>
+                        <field name="state" invisible="1"/>
+                    </group>
+
+                    <!-- Step 1: Draft — load unmapped products -->
+                    <div invisible="state != 'draft'">
+                        <div class="alert alert-info" role="alert">
+                            <strong>Step 1:</strong> Select a store and load unmapped Uva products from order history.
+                        </div>
+                        <button name="action_load_unmapped"
+                                string="Load Unmapped Products"
+                                type="object"
+                                class="btn-primary"
+                                data-testid="bulk-mapping-load-btn"/>
+                    </div>
+
+                    <!-- Step 2: Matched — review and edit matches -->
+                    <div invisible="state != 'matched'">
+                        <div class="alert alert-warning" role="alert">
+                            <strong>Step 2:</strong> Review auto-matched products. Edit the Odoo Product column to correct or add matches.
+                            <br/>
+                            <strong><field name="matched_count" readonly="1"/> of <field name="total_count" readonly="1"/> matched.</strong>
+                        </div>
+                    </div>
+
+                    <!-- Product lines (visible in draft with lines, and matched) -->
+                    <field name="line_ids"
+                           invisible="total_count == 0"
+                           data-testid="bulk-mapping-lines">
+                        <list editable="bottom">
+                            <field name="uva_product_id" readonly="1"/>
+                            <field name="uva_product_name" readonly="1"/>
+                            <field name="odoo_product_id"
+                                   data-testid="bulk-mapping-line-odoo-product"/>
+                            <field name="match_confidence" readonly="1"/>
+                            <field name="match_score" readonly="1" string="Score (%)"/>
+                            <field name="is_mapped" widget="boolean" readonly="1"/>
+                        </list>
+                    </field>
+
+                    <!-- Step 3: Done — success -->
+                    <div invisible="state != 'done'">
+                        <div class="alert alert-success" role="alert">
+                            <strong>Done!</strong> Product mappings have been created successfully.
+                        </div>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_auto_match"
+                            string="Auto-Match by Name"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            data-testid="bulk-mapping-automatch-btn"/>
+                    <button name="action_apply"
+                            string="Apply Mappings"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'matched'"
+                            data-testid="bulk-mapping-apply-btn"/>
+                    <button name="action_reset"
+                            string="Reset"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state == 'draft'"
+                            data-testid="bulk-mapping-reset-btn"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_uva_bulk_mapping_wizard" model="ir.actions.act_window">
+        <field name="name">Bulk Product Mapping</field>
+        <field name="res_model">uva.bulk.mapping.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_uva_bulk_mapping_wizard"
+              name="Bulk Product Mapping"
+              parent="point_of_sale.menu_point_config"
+              action="action_uva_bulk_mapping_wizard"
+              sequence="92"/>
+
+</odoo>

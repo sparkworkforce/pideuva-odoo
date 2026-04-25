@@ -6,6 +6,8 @@ from datetime import timedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from markupsafe import escape
+
 from .uva_api_client import RETRYABLE_ACTIONS, UvaApiError, UvaAuthError, UvaCoverageError
 
 _logger = logging.getLogger(__name__)
@@ -20,6 +22,10 @@ class UvaApiRetryQueue(models.Model):
     _description = 'Uva API Retry Queue'
     _order = 'next_retry_at asc'
 
+    _ALLOWED_RES_MODELS = frozenset({
+        'uva.order.log', 'uva.fleet.delivery', 'stock.picking',
+    })
+
     # ------------------------------------------------------------------
     # Fields
     # ------------------------------------------------------------------
@@ -28,8 +34,12 @@ class UvaApiRetryQueue(models.Model):
         string='Action Type', required=True, index=True,
         help='Identifier for the operation to retry (e.g. notify_acceptance)',
     )
+    company_id = fields.Many2one(
+        'res.company', related='store_id.company_id', store=True,
+    )
     payload = fields.Text(
         string='Payload', required=True,
+        groups='base.group_system',
         help='JSON-serialized request body',
     )
     res_model = fields.Char(
@@ -87,6 +97,13 @@ class UvaApiRetryQueue(models.Model):
         except (TypeError, ValueError) as exc:
             raise ValueError(f"payload must be a valid JSON string: {exc}") from exc
 
+        # Validate res_model against allowlist
+        if res_model not in self._ALLOWED_RES_MODELS:
+            raise ValueError(
+                f"res_model '{res_model}' is not allowed. "
+                f"Valid models: {sorted(self._ALLOWED_RES_MODELS)}"
+            )
+
         first_retry_at = fields.Datetime.now() + timedelta(seconds=_BACKOFF_BASE)
         entry = self.create({
             'action_type': action_type,
@@ -135,7 +152,7 @@ class UvaApiRetryQueue(models.Model):
         due_entries = self.search([
             ('state', '=', 'pending'),
             ('next_retry_at', '<=', now),
-        ])  # ordered by next_retry_at asc (model _order)
+        ], limit=200)  # M5: batch limit to prevent cron worker timeout
 
         ICP = self.env['ir.config_parameter'].sudo()
         max_retries = int(ICP.get_param('uva.retry.max_attempts', _DEFAULT_MAX_RETRIES))
@@ -207,7 +224,6 @@ class UvaApiRetryQueue(models.Model):
         payload = json.loads(self.payload)
         action = self.action_type
 
-        # TODO(uva-api): expand dispatch table as endpoints are confirmed
         if action == 'notify_acceptance':
             client.confirm_order(
                 api_key, payload['external_id'], 'accept',
@@ -223,10 +239,29 @@ class UvaApiRetryQueue(models.Model):
                 items=payload.get('items'), demo_mode=demo_mode,
             )
         elif action == 'create_fleet_delivery':
-            client.create_delivery(
+            result = client.create_delivery(
                 api_key, payload['pickup'], payload['destination'],
                 payload['reference'], demo_mode=demo_mode,
             )
+            # Create tracking record that the original dispatch would have created
+            delivery_id = result.get('delivery_id', '')
+            tracking_url = result.get('tracking_url', '')
+            if delivery_id and self.res_model == 'stock.picking':
+                picking = self.env['stock.picking'].browse(self.res_id)
+                if picking.exists():
+                    carrier = self.env['delivery.carrier'].search(
+                        [('delivery_type', '=', 'uva')], limit=1,
+                    )
+                    if carrier:
+                        self.env['uva.fleet.delivery'].create({
+                            'uva_delivery_id': delivery_id,
+                            'carrier_id': carrier.id,
+                            'picking_id': picking.id,
+                            'sale_order_id': picking.sale_id.id if picking.sale_id else False,
+                            'company_id': picking.company_id.id,
+                            'tracking_url': tracking_url,
+                            'state': 'pending',
+                        })
         elif action == 'cancel_fleet_delivery':
             client.cancel_delivery(api_key, payload['delivery_id'], demo_mode=demo_mode)
         else:
@@ -241,6 +276,12 @@ class UvaApiRetryQueue(models.Model):
         })
         # BR-07: post chatter notification on linked record
         try:
+            if self.res_model not in self._ALLOWED_RES_MODELS:
+                _logger.warning(
+                    "Uva retry queue entry %s has unexpected res_model '%s'",
+                    self.id, self.res_model,
+                )
+                return
             record = self.env[self.res_model].browse(self.res_id)
             if record.exists() and hasattr(record, 'message_post'):
                 record.message_post(
@@ -248,10 +289,10 @@ class UvaApiRetryQueue(models.Model):
                         "⚠️ Uva API retry failed permanently for action <b>%(action)s</b>.<br/>"
                         "Reason: %(reason)s<br/>"
                         "Retry attempts: %(count)s<br/>"
-                        "Please check the <a href='/web#model=uva.api.retry.queue&id=%(id)s'>"
+                        "Please check the <a href='/web#model=uva.api.retry.queue&amp;id=%(id)s'>"
                         "retry queue entry</a> for details.",
-                        action=self.action_type,
-                        reason=reason,
+                        action=escape(self.action_type),
+                        reason=escape(reason),
                         count=self.retry_count,
                         id=self.id,
                     ),
@@ -268,7 +309,7 @@ class UvaApiRetryQueue(models.Model):
                                 "Permanent failure after %(count)s retries. "
                                 "Last error: %(reason)s",
                                 count=self.retry_count,
-                                reason=reason,
+                                reason=escape(reason),
                             ),
                         )
                     except Exception:
@@ -300,3 +341,18 @@ class UvaApiRetryQueue(models.Model):
         if self.state not in ('pending', 'failed'):
             raise UserError(_("Only pending or failed entries can be discarded."))
         self.write({'state': 'discarded', 'processed_at': fields.Datetime.now()})
+
+    # ------------------------------------------------------------------
+    # Cron: PII purge (I1 — clear payload on completed entries)
+    # ------------------------------------------------------------------
+
+    @api.model
+    def purge_done_payloads(self, days=30):
+        """Clear payload on done/failed/discarded entries older than `days` days."""
+        cutoff = fields.Datetime.now() - timedelta(days=days)
+        records = self.sudo().search([
+            ('state', 'in', ('done', 'failed', 'discarded')),
+            ('processed_at', '<', cutoff),
+            ('payload', '!=', False),
+        ])
+        records.write({'payload': False})

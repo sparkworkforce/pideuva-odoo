@@ -1,0 +1,136 @@
+/* Uva POS Order Popup — plain CSS */
+
+:root {
+    --uva-warning: #ffc107;
+    --uva-urgent: #dc3545;
+    --uva-critical: #8b0000;
+    --uva-info: #0dcaf0;
+    --uva-accent: #6f42c1;
+    --uva-customer-bg: #f8f9fa;
+    --uva-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    --uva-radius: 0.5rem;
+    --uva-transition-speed: 0.3s;
+}
+
+/* 1. Overlay */
+.uva-order-popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 2. Dialog */
+.uva-order-popup-dialog {
+    width: 100%;
+    max-width: 500px;
+    margin: 1rem;
+}
+
+.uva-order-popup-dialog .modal-content {
+    border-radius: var(--uva-radius);
+    box-shadow: var(--uva-shadow);
+    animation: uva-fade-in var(--uva-transition-speed) ease-out;
+}
+
+/* 3. Countdown urgency */
+[data-testid="uva-countdown"] {
+    background-color: var(--uva-warning);
+    color: #212529;
+}
+
+.uva-countdown-urgent {
+    background-color: var(--uva-urgent) !important;
+    color: #fff !important;
+    animation: uva-pulse 1.5s ease-in-out infinite;
+}
+
+.uva-countdown-critical {
+    background-color: var(--uva-critical) !important;
+    color: #fff !important;
+    animation: uva-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes uva-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* 4. Queue badge bounce */
+@keyframes uva-bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+.uva-queue-pulse,
+[data-testid="uva-queue-badge"].uva-queue-pulse {
+    animation: uva-bounce 0.4s ease-in-out 3;
+}
+
+/* 5. Mobile/tablet */
+@media (max-width: 768px) {
+    .uva-order-popup-dialog {
+        max-width: 100%;
+        margin: 0.5rem;
+    }
+
+    .uva-order-popup-dialog .modal-content {
+        font-size: 0.9rem;
+    }
+
+    .uva-order-popup-dialog .modal-body {
+        padding: 0.75rem;
+    }
+
+    .uva-order-popup-dialog .modal-header {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .uva-order-popup-dialog .modal-footer {
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* 6. Fade-in transition */
+@keyframes uva-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 7. Health indicator */
+.uva-health-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.uva-health-indicator .uva-health-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* 8. Customer section */
+.uva-customer-section {
+    background: var(--uva-customer-bg);
+    border-left: 3px solid var(--uva-accent);
+    padding: 0.75rem;
+    border-radius: 0 var(--uva-radius) var(--uva-radius) 0;
+}
+
+/* 9. Special instructions */
+[data-testid="uva-special-instructions"] .alert-info {
+    border-left: 3px solid var(--uva-info);
+    border-radius: 0 var(--uva-radius) var(--uva-radius) 0;
+}

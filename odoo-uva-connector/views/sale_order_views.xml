@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_order_uva_fleet" model="ir.ui.view">
+        <field name="name">sale.order.uva.fleet</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_ship_with_uva_fleet"
+                        string="Ship with Uva Fleet"
+                        type="object"
+                        class="btn-secondary"
+                        icon="fa-truck"
+                        invisible="state != 'sale'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

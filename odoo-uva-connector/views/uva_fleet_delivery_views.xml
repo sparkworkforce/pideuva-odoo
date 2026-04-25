@@ -20,6 +20,7 @@
                        decoration-danger="state == 'failed'"
                        decoration-muted="state == 'cancelled'"/>
                 <field name="estimated_cost"/>
+                <field name="company_id" optional="hide"/>
                 <field name="last_status_at"/>
             </list>
         </field>
@@ -51,10 +52,32 @@
                     <group>
                         <group string="Cost &amp; Timing">
                             <field name="estimated_cost" readonly="1"/>
+                            <field name="eta_minutes" readonly="1"/>
                             <field name="last_status_at" readonly="1"/>
                         </group>
+                        <group string="Driver Info">
+                            <field name="driver_name" readonly="1"/>
+                            <field name="driver_phone" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
                         <group string="Tracking">
                             <field name="tracking_url" readonly="1" widget="url"/>
+                        </group>
+                    </group>
+                    <group string="Proof of Delivery" invisible="state != 'delivered'">
+                        <field name="proof_photo_url" widget="url" readonly="1"/>
+                        <field name="delivery_signature" readonly="1" widget="image"/>
+                    </group>
+                    <group>
+                        <group string="Pickup Location">
+                            <field name="pickup_lat" readonly="1"/>
+                            <field name="pickup_lng" readonly="1"/>
+                        </group>
+                        <group string="Delivery Location">
+                            <field name="delivery_lat" readonly="1"/>
+                            <field name="delivery_lng" readonly="1"/>
+                            <field name="map_url" readonly="1" widget="uva_map"/>
                         </group>
                     </group>
                 </sheet>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <!-- List view -->
+    <record id="view_uva_order_rule_list" model="ir.ui.view">
+        <field name="name">uva.order.rule.list</field>
+        <field name="model">uva.order.rule</field>
+        <field name="arch" type="xml">
+            <list string="Order Routing Rules" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="store_id"/>
+                <field name="condition_type"/>
+                <field name="condition_value"/>
+                <field name="action_type"/>
+                <field name="target_pos_config_id" invisible="action_type != 'route_pos'"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_uva_order_rule_form" model="ir.ui.view">
+        <field name="name">uva.order.rule.form</field>
+        <field name="model">uva.order.rule</field>
+        <field name="arch" type="xml">
+            <form string="Order Routing Rule">
+                <sheet>
+                    <group>
+                        <group string="General">
+                            <field name="name"/>
+                            <field name="sequence"/>
+                            <field name="store_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Condition">
+                            <field name="condition_type"/>
+                            <field name="condition_value"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Action">
+                            <field name="action_type"/>
+                            <field name="target_pos_config_id"
+                                   invisible="action_type != 'route_pos'"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_uva_order_rule" model="ir.actions.act_window">
+        <field name="name">Order Routing Rules</field>
+        <field name="res_model">uva.order.rule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Configuration menu -->
+    <menuitem id="menu_uva_config"
+              name="Configuration"
+              parent="menu_uva_root"
+              sequence="50"/>
+    <menuitem id="menu_uva_config_order_rules"
+              name="Order Rules"
+              parent="menu_uva_config"
+              action="action_uva_order_rule"
+              sequence="1"/>
+
+</odoo>

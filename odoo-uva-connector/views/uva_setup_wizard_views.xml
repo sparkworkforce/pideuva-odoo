@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <record id="view_uva_setup_wizard_form" model="ir.ui.view">
+        <field name="name">uva.setup.wizard.form</field>
+        <field name="model">uva.setup.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Uva Connector Setup">
+                <field name="step" invisible="1"/>
+
+                <!-- Step indicator -->
+                <div class="text-center mb-3">
+                    <h3 invisible="step != 'credentials'">
+                        Step 1 of 3 — Credentials
+                    </h3>
+                    <h3 invisible="step != 'store'">
+                        Step 2 of 3 — Store Configuration
+                    </h3>
+                    <h3 invisible="step != 'done'">
+                        Step 3 of 3 — Setup Complete
+                    </h3>
+                </div>
+
+                <!-- Step 1: Credentials -->
+                <group invisible="step != 'credentials'"
+                       data-testid="wizard-step-credentials">
+                    <group>
+                        <field name="demo_mode" widget="boolean_toggle"
+                               data-testid="wizard-demo-mode"/>
+                        <field name="api_key" password="True"
+                               invisible="demo_mode"
+                               data-testid="wizard-api-key"/>
+                        <field name="webhook_secret" password="True"
+                               invisible="demo_mode"
+                               data-testid="wizard-webhook-secret"/>
+                    </group>
+                    <div invisible="demo_mode">
+                        <button name="action_test_connection"
+                                string="Test Connection"
+                                type="object"
+                                class="btn-secondary"
+                                data-testid="wizard-test-connection-btn"/>
+                    </div>
+                </group>
+
+                <!-- Step 2: Store -->
+                <group invisible="step != 'store'"
+                       data-testid="wizard-step-store">
+                    <group>
+                        <field name="name" placeholder="e.g. My Restaurant"
+                               data-testid="wizard-store-name"/>
+                        <field name="pos_config_id"
+                               data-testid="wizard-pos-config"/>
+                    </group>
+                </group>
+
+                <!-- Step 3: Done -->
+                <group invisible="step != 'done'"
+                       data-testid="wizard-step-done">
+                    <div class="alert alert-success" role="alert">
+                        <strong>🎉 Setup complete!</strong>
+                        <p>Your Uva store has been created successfully.</p>
+                    </div>
+                    <group>
+                        <field name="store_config_id" readonly="1"
+                               data-testid="wizard-store-config"/>
+                    </group>
+                    <div>
+                        <button name="action_open_product_mapping"
+                                string="Configure Product Mappings"
+                                type="object"
+                                class="btn-primary"
+                                data-testid="wizard-open-mapping-btn"/>
+                    </div>
+                </group>
+
+                <footer>
+                    <button name="action_prev" string="Previous"
+                            type="object" class="btn-secondary"
+                            invisible="step == 'credentials'"
+                            data-testid="wizard-prev-btn"/>
+                    <button name="action_next" string="Next"
+                            type="object" class="btn-primary"
+                            invisible="step == 'done'"
+                            data-testid="wizard-next-btn"/>
+                    <button name="action_done" string="Close"
+                            type="object" class="btn-primary"
+                            invisible="step != 'done'"
+                            data-testid="wizard-close-btn"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"
+                            invisible="step == 'done'"
+                            data-testid="wizard-cancel-btn"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_uva_setup_wizard" model="ir.actions.act_window">
+        <field name="name">Uva Setup Wizard</field>
+        <field name="res_model">uva.setup.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_uva_setup_wizard"
+              name="Uva Setup Wizard"
+              parent="point_of_sale.menu_point_config"
+              action="action_uva_setup_wizard"
+              sequence="89"
+              groups="base.group_system"/>
+
+</odoo>

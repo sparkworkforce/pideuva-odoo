@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <!-- Kanban view for dashboard -->
+    <record id="view_uva_order_log_kanban" model="ir.ui.view">
+        <field name="name">uva.order.log.kanban</field>
+        <field name="model">uva.order.log</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state"
+                    decoration-danger="state == 'error'"
+                    decoration-warning="state == 'pending'"
+                    decoration-success="state == 'done'">
+                <progressbar field="state" colors='{"draft": "info", "pending": "warning", "accepted": "primary", "done": "success", "rejected": "muted", "error": "danger"}'/>
+                <templates>
+                    <t t-name="card">
+                        <field name="external_id" class="fw-bold fs-5"/>
+                        <field name="store_name"/>
+                        <field name="received_at"/>
+                        <field name="state" widget="badge"
+                               decoration-danger="state == 'error'"
+                               decoration-warning="state == 'pending'"
+                               decoration-success="state == 'done'"
+                               decoration-info="state == 'accepted'"
+                               decoration-muted="state == 'rejected'"/>
+                        <div class="mt-2">
+                            <button name="action_retry" string="Retry"
+                                    type="object" class="btn-primary btn-sm me-1"
+                                    invisible="state != 'error'"/>
+                            <button name="action_reject" string="Reject"
+                                    type="object" class="btn-secondary btn-sm"
+                                    invisible="state not in ('draft', 'pending')"/>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Dashboard client action (KPI cards) -->
+    <record id="action_uva_dashboard_client" model="ir.actions.client">
+        <field name="name">Uva Dashboard</field>
+        <field name="tag">uva_dashboard</field>
+    </record>
+
+    <!-- Kanban action (used by "View Orders" button in dashboard) -->
+    <record id="action_uva_dashboard" model="ir.actions.act_window">
+        <field name="name">Uva Dashboard</field>
+        <field name="res_model">uva.order.log</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{'search_default_today': 1, 'search_default_group_state': 1}</field>
+    </record>
+
+    <!-- Top-level Uva menu under POS -->
+    <menuitem id="menu_uva_root"
+              name="Uva"
+              parent="point_of_sale.menu_point_root"
+              sequence="3"/>
+
+    <!-- Dashboard as first child — points to client action -->
+    <menuitem id="menu_uva_dashboard"
+              name="Dashboard"
+              parent="menu_uva_root"
+              action="action_uva_dashboard_client"
+              sequence="1"/>
+
+    <!-- Re-parent existing menus under Uva root -->
+    <record id="menu_uva_order_log" model="ir.ui.menu">
+        <field name="name">Incoming Orders</field>
+        <field name="parent_id" ref="menu_uva_root"/>
+        <field name="action" ref="action_uva_order_log"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="menu_uva_store_config" model="ir.ui.menu">
+        <field name="name">Stores</field>
+        <field name="parent_id" ref="menu_uva_root"/>
+        <field name="action" ref="action_uva_store_config"/>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="menu_uva_product_mapping" model="ir.ui.menu">
+        <field name="name">Product Mappings</field>
+        <field name="parent_id" ref="menu_uva_root"/>
+        <field name="action" ref="action_uva_product_mapping"/>
+        <field name="sequence">30</field>
+    </record>
+
+</odoo>

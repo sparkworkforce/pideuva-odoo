@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <!-- Order Log: Graph view -->
+    <record id="view_uva_order_log_graph" model="ir.ui.view">
+        <field name="name">uva.order.log.graph</field>
+        <field name="model">uva.order.log</field>
+        <field name="arch" type="xml">
+            <graph string="Uva Orders" type="bar">
+                <field name="date_received" interval="day"/>
+                <field name="state" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Order Log: Pivot view -->
+    <record id="view_uva_order_log_pivot" model="ir.ui.view">
+        <field name="name">uva.order.log.pivot</field>
+        <field name="model">uva.order.log</field>
+        <field name="arch" type="xml">
+            <pivot string="Uva Orders">
+                <field name="store_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="processing_time" type="measure"/>
+                <field name="prep_time_minutes" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Order Log: Search view with filters -->
+    <record id="view_uva_order_log_search_analytics" model="ir.ui.view">
+        <field name="name">uva.order.log.search.analytics</field>
+        <field name="model">uva.order.log</field>
+        <field name="arch" type="xml">
+            <search string="Uva Order Analytics">
+                <field name="store_id"/>
+                <field name="state"/>
+                <field name="external_id"/>
+                <filter name="today" string="Today" domain="[('date_received', '=', context_today().strftime('%%Y-%%m-%%d'))]"/>
+                <filter name="this_week" string="This Week" domain="[('date_received', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%%Y-%%m-%%d'))]"/>
+                <filter name="this_month" string="This Month" domain="[('date_received', '>=', context_today().strftime('%%Y-%%m-01'))]"/>
+                <separator/>
+                <filter name="state_draft" string="New" domain="[('state', '=', 'draft')]"/>
+                <filter name="state_accepted" string="Accepted" domain="[('state', '=', 'accepted')]"/>
+                <filter name="state_done" string="Done" domain="[('state', '=', 'done')]"/>
+                <filter name="state_error" string="Error" domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_store" string="Store" context="{'group_by': 'store_id'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                    <filter name="group_day" string="Day" context="{'group_by': 'date_received:day'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date_received:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Fleet Delivery: Graph view -->
+    <record id="view_uva_fleet_delivery_graph" model="ir.ui.view">
+        <field name="name">uva.fleet.delivery.graph</field>
+        <field name="model">uva.fleet.delivery</field>
+        <field name="arch" type="xml">
+            <graph string="Uva Fleet Deliveries" type="bar">
+                <field name="create_date" interval="day"/>
+                <field name="state" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Fleet Delivery: Pivot view -->
+    <record id="view_uva_fleet_delivery_pivot" model="ir.ui.view">
+        <field name="name">uva.fleet.delivery.pivot</field>
+        <field name="model">uva.fleet.delivery</field>
+        <field name="arch" type="xml">
+            <pivot string="Uva Fleet Deliveries">
+                <field name="carrier_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="estimated_cost" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Fleet Delivery: Search view -->
+    <record id="view_uva_fleet_delivery_search_analytics" model="ir.ui.view">
+        <field name="name">uva.fleet.delivery.search.analytics</field>
+        <field name="model">uva.fleet.delivery</field>
+        <field name="arch" type="xml">
+            <search string="Fleet Delivery Analytics">
+                <field name="carrier_id"/>
+                <field name="state"/>
+                <filter name="active_deliveries" string="Active" domain="[('state', 'not in', ['delivered', 'cancelled', 'failed'])]"/>
+                <filter name="delivered" string="Delivered" domain="[('state', '=', 'delivered')]"/>
+                <filter name="failed" string="Failed" domain="[('state', '=', 'failed')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_carrier" string="Carrier" context="{'group_by': 'carrier_id'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Order Analytics action -->
+    <record id="action_uva_analytics" model="ir.actions.act_window">
+        <field name="name">Order Analytics</field>
+        <field name="res_model">uva.order.log</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="search_view_id" ref="view_uva_order_log_search_analytics"/>
+    </record>
+
+    <!-- Fleet Analytics action -->
+    <record id="action_uva_fleet_analytics" model="ir.actions.act_window">
+        <field name="name">Fleet Analytics</field>
+        <field name="res_model">uva.fleet.delivery</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="search_view_id" ref="view_uva_fleet_delivery_search_analytics"/>
+    </record>
+
+    <!-- Analytics menu -->
+    <menuitem id="menu_uva_analytics"
+              name="Analytics"
+              parent="menu_uva_root"
+              sequence="15"/>
+    <menuitem id="menu_uva_analytics_orders"
+              name="Order Analytics"
+              parent="menu_uva_analytics"
+              action="action_uva_analytics"
+              sequence="1"/>
+    <menuitem id="menu_uva_analytics_fleet"
+              name="Fleet Analytics"
+              parent="menu_uva_analytics"
+              action="action_uva_fleet_analytics"
+              sequence="2"/>
+
+</odoo>

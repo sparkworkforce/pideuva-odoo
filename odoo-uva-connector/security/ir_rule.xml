@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+    <data noupdate="1">
+        <record id="uva_fleet_delivery_company_rule" model="ir.rule">
+            <field name="name">Uva Fleet Delivery: multi-company</field>
+            <field name="model_id" ref="model_uva_fleet_delivery"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="uva_store_config_company_rule" model="ir.rule">
+            <field name="name">Uva Store Config: multi-company</field>
+            <field name="model_id" ref="model_uva_store_config"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="uva_order_log_company_rule" model="ir.rule">
+            <field name="name">Uva Order Log: multi-company</field>
+            <field name="model_id" ref="model_uva_order_log"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="uva_product_mapping_company_rule" model="ir.rule">
+            <field name="name">Uva Product Mapping: multi-company</field>
+            <field name="model_id" ref="model_uva_product_mapping"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="uva_api_retry_queue_company_rule" model="ir.rule">
+            <field name="name">Uva Retry Queue: multi-company</field>
+            <field name="model_id" ref="model_uva_api_retry_queue"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="uva_notification_company_rule" model="ir.rule">
+            <field name="name">Uva Notification: multi-company</field>
+            <field name="model_id" ref="model_uva_notification"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="uva_order_rule_company_rule" model="ir.rule">
+            <field name="name">Uva Order Rule: multi-company</field>
+            <field name="model_id" ref="model_uva_order_rule"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="uva_menu_sync_company_rule" model="ir.rule">
+            <field name="name">Uva Menu Sync: multi-company</field>
+            <field name="model_id" ref="model_uva_menu_sync"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+    </data>
+</odoo>

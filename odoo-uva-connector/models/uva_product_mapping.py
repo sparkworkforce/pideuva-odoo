@@ -21,6 +21,9 @@ class UvaProductMapping(models.Model):
         index=True,
         help='The product identifier as sent by Uva in order payloads.',
     )
+    company_id = fields.Many2one(
+        'res.company', related='store_id.company_id', store=True,
+    )
     odoo_product_id = fields.Many2one(
         'product.product',
         string='Odoo Product',
@@ -78,11 +81,52 @@ class UvaProductMapping(models.Model):
     # ------------------------------------------------------------------
 
     def action_import_from_uva(self):
-        """Bulk import product mappings from the Uva product catalog.
+        """Fetch Uva product catalog and open bulk mapping wizard for review."""
+        store_id = self.env.context.get('default_store_id') or (self[:1].store_id.id if self else False)
+        if not store_id:
+            from odoo.exceptions import UserError
+            raise UserError("Please select a store first.")
+        store_rec = self.env['uva.store.config'].browse(store_id)
+        client = self.env['uva.api.client']
+        try:
+            products = client.get_products(
+                api_key=store_rec.sudo().api_key,
+                store_id=str(store_rec.id),
+                demo_mode=store_rec.demo_mode,
+            )
+        except Exception as exc:
+            from odoo.exceptions import UserError
+            raise UserError(f"Failed to fetch products from Uva: {exc}") from exc
 
-        # TODO(uva-api): implement once Uva product catalog endpoint is confirmed.
-        """
-        raise NotImplementedError(
-            "TODO(uva-api): bulk import from Uva product catalog not yet implemented. "
-            "Implement once Uva API docs are received."
-        )
+        if not products:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Import',
+                    'message': 'No products returned from Uva API.',
+                    'type': 'warning',
+                },
+            }
+
+        # Open bulk mapping wizard pre-populated with fetched products
+        wizard = self.env['uva.bulk.mapping.wizard'].create({'store_id': store_id})
+        lines = []
+        for prod in products:
+            uva_id = str(prod.get('id') or prod.get('product_id') or '')
+            if not uva_id:
+                continue
+            name = prod.get('name') or prod.get('product_name') or ''
+            lines.append((0, 0, {
+                'uva_product_id': uva_id,
+                'uva_product_name': name,
+            }))
+        if lines:
+            wizard.write({'line_ids': lines})
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'uva.bulk.mapping.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }

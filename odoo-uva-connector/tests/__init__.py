@@ -7,3 +7,8 @@ from . import test_uva_order_service
 from . import test_uva_order_webhook
 from . import test_uva_fleet_carrier
 from . import test_uva_fleet_service
+from . import test_uva_setup_wizard
+from . import test_uva_bulk_mapping
+from . import test_uva_health_check
+from . import test_uva_webhook_security
+from . import test_uva_e2e_mock

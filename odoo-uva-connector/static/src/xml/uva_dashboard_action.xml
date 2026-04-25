@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="odoo_uva_connector.UvaDashboardAction">
+        <div class="o_action" style="padding:24px;">
+            <h2>Uva Dashboard</h2>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;">
+                <!-- Orders row -->
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Orders Today</div>
+                    <div style="font-size:2rem;font-weight:700;"><t t-esc="state.stats.today_count || 0"/></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Accepted</div>
+                    <div style="font-size:2rem;font-weight:700;color:#4caf50;"><t t-esc="state.stats.accepted_count || 0"/></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Done</div>
+                    <div style="font-size:2rem;font-weight:700;color:#2e7d32;"><t t-esc="state.stats.done_count || 0"/></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Errors</div>
+                    <div style="font-size:2rem;font-weight:700;color:#f44336;"><t t-esc="state.stats.error_count || 0"/></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Acceptance Rate</div>
+                    <div style="font-size:2rem;font-weight:700;color:#1565c0;"><t t-esc="state.stats.acceptance_rate || 0"/>%</div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Avg Processing (min)</div>
+                    <div style="font-size:2rem;font-weight:700;color:#6a1b9a;"><t t-esc="state.stats.avg_processing_minutes || 0"/></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Pending Retries</div>
+                    <div style="font-size:2rem;font-weight:700;color:#e65100;"><t t-esc="state.stats.pending_retry_count || 0"/></div>
+                </div>
+            </div>
+            <!-- Fleet stats row -->
+            <h3 style="margin-top:24px;">Fleet</h3>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Active Deliveries</div>
+                    <div style="font-size:2rem;font-weight:700;color:#1a73e8;"><t t-esc="state.stats.active_deliveries || 0"/></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Delivered Today</div>
+                    <div style="font-size:2rem;font-weight:700;color:#4caf50;"><t t-esc="state.stats.delivered_today || 0"/></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:24px;min-width:160px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <div style="font-size:.8rem;color:#888;text-transform:uppercase;">Failed Today</div>
+                    <div style="font-size:2rem;font-weight:700;color:#f44336;"><t t-esc="state.stats.failed_today || 0"/></div>
+                </div>
+            </div>
+            <div style="margin-top:24px;display:flex;gap:8px;">
+                <button class="btn btn-primary" t-on-click="openOrders">View Orders</button>
+                <button class="btn btn-outline-primary" t-on-click="openAnalytics">Order Analytics</button>
+                <button class="btn btn-outline-primary" t-on-click="openFleetAnalytics">Fleet Analytics</button>
+            </div>
+            <!-- Per-store comparison table (Feature #8) -->
+            <t t-if="state.storeStats.length">
+                <h3 style="margin-top:24px;">Per-Store Performance</h3>
+                <table class="table table-sm table-bordered" style="margin-top:8px;background:#fff;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Store</th>
+                            <th class="text-end">Orders</th>
+                            <th class="text-end">Acceptance %</th>
+                            <th class="text-end">Avg Min</th>
+                            <th class="text-end">Error %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.storeStats" t-as="ss" t-key="ss.store_id">
+                            <tr>
+                                <td t-esc="ss.store_name"/>
+                                <td class="text-end" t-esc="ss.order_count"/>
+                                <td class="text-end"><t t-esc="ss.acceptance_rate"/>%</td>
+                                <td class="text-end" t-esc="ss.avg_minutes"/>
+                                <td class="text-end"><t t-esc="ss.error_rate"/>%</td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </t>
+        </div>
+    </t>
+</templates>

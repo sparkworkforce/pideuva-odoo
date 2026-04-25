@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="odoo_uva_connector.UvaPosHealthIndicator">
+        <div class="uva-health-indicator d-inline-flex align-items-center gap-1"
+             data-testid="uva-health-indicator">
+            <span t-attf-style="width:10px;height:10px;border-radius:50%;background:#{dotColor};display:inline-block;"
+                  data-testid="uva-health-dot"/>
+            <span class="small" data-testid="uva-health-label"
+                  t-esc="label"/>
+        </div>
+    </t>
+</templates>

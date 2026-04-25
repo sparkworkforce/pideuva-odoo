@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<templates xml:space="preserve">
+
+    <t t-name="odoo_uva_connector.UvaPosScreen" owl="1">
+        <div class="d-flex flex-column" style="height:100%;background:#f8f9fa;"
+             data-testid="uva-pos-screen">
+
+            <!-- Header -->
+            <div class="d-flex align-items-center px-3 py-2 text-white"
+                 style="background:#7c3aed;">
+                <span class="fw-bold fs-5">🛵 Uva Orders</span>
+                <span class="badge bg-light text-dark ms-2"
+                      data-testid="uva-screen-queue-count"
+                      t-esc="state.orderQueue.length"/>
+            </div>
+
+            <div class="d-flex flex-grow-1 overflow-hidden">
+
+                <!-- Left panel: order queue (30%) -->
+                <div class="border-end overflow-auto" style="width:30%;background:#fff;"
+                     data-testid="uva-screen-queue">
+                    <t t-if="state.orderQueue.length === 0">
+                        <div class="text-muted text-center p-4">No pending Uva orders</div>
+                    </t>
+                    <t t-foreach="state.orderQueue" t-as="order" t-key="order.order_id">
+                        <div t-att-class="'p-3 border-bottom cursor-pointer ' + (state.selectedOrder and state.selectedOrder.order_id === order.order_id ? 'bg-light' : '')"
+                             t-att-data-testid="'uva-queue-item-' + order.order_id"
+                             t-on-click="() => this.selectOrder(order)">
+                            <div class="fw-bold" t-esc="order.external_id"/>
+                            <div class="text-muted small" t-esc="order.store_name"/>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <span class="badge bg-info" t-esc="order.state or 'new'"/>
+                                <small class="text-muted" t-esc="order.received_at"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Right panel: selected order details (70%) -->
+                <div class="flex-grow-1 overflow-auto p-4" data-testid="uva-screen-detail">
+                    <t t-if="!state.selectedOrder">
+                        <div class="text-muted text-center mt-5 fs-5">
+                            Select an order from the queue
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <p class="text-muted small">
+                            Order ID: <strong t-esc="state.selectedOrder.external_id"/>
+                        </p>
+
+                        <!-- Customer -->
+                        <div class="mb-3" data-testid="uva-screen-customer">
+                            <h6>Customer</h6>
+                            <div t-if="state.selectedOrder.customer_name" class="mb-1">
+                                <strong>Name:</strong> <t t-esc="state.selectedOrder.customer_name"/>
+                            </div>
+                            <div t-if="state.selectedOrder.delivery_address" class="mb-1">
+                                <strong>Address:</strong> <t t-esc="state.selectedOrder.delivery_address"/>
+                            </div>
+                            <div t-if="state.selectedOrder.phone" class="mb-1">
+                                <strong>Phone:</strong> <t t-esc="state.selectedOrder.phone"/>
+                            </div>
+                        </div>
+
+                        <!-- Total -->
+                        <div t-if="state.selectedOrder.total_amount !== undefined and state.selectedOrder.total_amount !== null"
+                             class="mb-3" data-testid="uva-screen-total">
+                            <h6>Total</h6>
+                            <span class="fs-4 fw-bold">
+                                <t t-esc="state.selectedOrder.currency or '$'"/>
+                                <t t-esc="state.selectedOrder.total_amount"/>
+                            </span>
+                        </div>
+
+                        <!-- Notes -->
+                        <div t-if="state.selectedOrder.notes" class="mb-3"
+                             data-testid="uva-screen-notes">
+                            <h6>Special Instructions</h6>
+                            <div class="alert alert-info mb-0 py-2">
+                                <t t-esc="state.selectedOrder.notes"/>
+                            </div>
+                        </div>
+
+                        <!-- Items -->
+                        <div t-if="state.selectedOrder.items and state.selectedOrder.items.length"
+                             class="mb-3">
+                            <h6>Items</h6>
+                            <ul class="list-group">
+                                <t t-foreach="state.selectedOrder.items" t-as="item" t-key="item.product_id">
+                                    <li t-att-class="'list-group-item d-flex justify-content-between align-items-center' + (state.unavailableItems[item.product_id] ? ' list-group-item-danger' : '')">
+                                        <span>
+                                            <t t-esc="item.name or item.product_id"/>
+                                            <span class="badge bg-secondary ms-1"
+                                                  t-esc="'x' + (item.qty or 1)"/>
+                                        </span>
+                                        <button class="btn btn-sm"
+                                                t-att-class="state.unavailableItems[item.product_id] ? 'btn-danger' : 'btn-outline-secondary'"
+                                                t-att-data-testid="'screen-item-unavail-' + item.product_id"
+                                                t-on-click="() => this.toggleItemUnavailable(item.product_id)">
+                                            <t t-if="state.unavailableItems[item.product_id]">Unavailable ✓</t>
+                                            <t t-else="">Mark Unavailable</t>
+                                        </button>
+                                    </li>
+                                </t>
+                            </ul>
+                        </div>
+
+                        <!-- Error -->
+                        <div t-if="state.error" class="alert alert-danger"
+                             data-testid="uva-screen-error">
+                            <t t-esc="state.error"/>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="d-flex gap-2 mt-3" data-testid="uva-screen-actions">
+                            <button class="btn btn-danger"
+                                    data-testid="uva-screen-reject-btn"
+                                    t-att-disabled="state.submitting"
+                                    t-on-click="onReject">
+                                ✗ Reject
+                            </button>
+                            <button class="btn btn-success"
+                                    data-testid="uva-screen-accept-btn"
+                                    t-att-disabled="state.submitting"
+                                    t-on-click="onAccept">
+                                <t t-if="state.submitting">Processing…</t>
+                                <t t-elif="hasUnavailableItems">✓ Accept (modified)</t>
+                                <t t-else="">✓ Accept</t>
+                            </button>
+                        </div>
+                    </t>
+                </div>
+
+            </div>
+        </div>
+    </t>
+
+</templates>

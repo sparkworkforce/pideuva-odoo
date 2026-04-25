@@ -8,7 +8,7 @@ from .uva_api_client import UvaApiError
 _logger = logging.getLogger(__name__)
 
 # Uva Fleet status → Odoo uva.fleet.delivery state mapping
-# TODO(uva-api): confirm exact status strings from Uva Fleet API docs
+# See doc/api_compatibility.md for confirmed/unconfirmed status strings
 _UVA_STATUS_MAP = {
     'pending':    'pending',
     'assigned':   'assigned',
@@ -35,7 +35,7 @@ class UvaFleetService(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
-    def process_status_update(self, delivery_id, status, updated_at):
+    def process_status_update(self, delivery_id, status, updated_at, **kwargs):
         """Process a Uva Fleet delivery status update.
 
         Finds the linked uva.fleet.delivery record, updates its state,
@@ -45,6 +45,7 @@ class UvaFleetService(models.AbstractModel):
             delivery_id (str): Uva Fleet delivery tracking ID
             status (str): Uva status string (e.g. 'in_transit', 'delivered')
             updated_at (datetime|str): Timestamp of the status update
+            **kwargs: Optional driver/eta fields (eta_minutes, driver_name, driver_phone, driver_lat, driver_lng)
         """
         fleet_delivery = self.env['uva.fleet.delivery'].search(
             [('uva_delivery_id', '=', delivery_id)], limit=1
@@ -64,11 +65,25 @@ class UvaFleetService(models.AbstractModel):
             )
             return
 
-        # Update state and last_status_at (used by polling throttle)
-        fleet_delivery.write({
+        # M3: Forward-only state transitions — prevent replay attacks from
+        # reverting a delivery to an earlier state.
+        if not self._is_forward_transition(fleet_delivery.state, odoo_state):
+            _logger.info(
+                "[uva:%s] process_status_update: ignoring backward transition %s → %s",
+                delivery_id, fleet_delivery.state, odoo_state,
+            )
+            return
+
+        # Update state, last_status_at, and optional driver/eta fields
+        vals = {
             'state': odoo_state,
             'last_status_at': fields.Datetime.now(),
-        })
+        }
+        for fld in ('eta_minutes', 'driver_name', 'driver_phone', 'driver_lat', 'driver_lng',
+                    'proof_photo_url', 'delivery_signature'):
+            if fld in kwargs and kwargs[fld] is not None:
+                vals[fld] = kwargs[fld]
+        fleet_delivery.write(vals)
 
         # Post chatter to picking (FR-06.3)
         if fleet_delivery.picking_id:
@@ -77,6 +92,16 @@ class UvaFleetService(models.AbstractModel):
         # Post chatter to sale order (FR-06.3)
         if fleet_delivery.sale_order_id:
             self._post_chatter(fleet_delivery.sale_order_id, status, updated_at)
+
+        # Send customer notification for delivery events
+        _DELIVERY_NOTIF_MAP = {
+            'assigned': 'delivery_assigned',
+            'in_transit': 'delivery_in_transit',
+            'delivered': 'delivery_delivered',
+        }
+        notif_type = _DELIVERY_NOTIF_MAP.get(odoo_state)
+        if notif_type:
+            self.env['uva.notification']._send_delivery_notification(fleet_delivery, notif_type)
 
     # ------------------------------------------------------------------
     # Polling cron entry point (D-09: fast cron + per-record throttle)
@@ -98,6 +123,9 @@ class UvaFleetService(models.AbstractModel):
         api_key = ICP.get_param('uva.fleet.api_key', '')
         demo_mode_raw = ICP.get_param('uva.fleet.demo_mode', 'False')
         demo_mode = demo_mode_raw in ('True', '1', 'true')
+        if not api_key and not demo_mode:
+            _logger.warning("poll_active_deliveries: no fleet API key configured — skipping")
+            return
         client = self.env['uva.api.client']
 
         for delivery in active_deliveries:
@@ -162,7 +190,6 @@ class UvaFleetService(models.AbstractModel):
         """Map a Uva Fleet status string to an Odoo uva.fleet.delivery state.
 
         Returns None if the status is unknown.
-        # TODO(uva-api): confirm exact status strings from Uva Fleet API docs
         """
         return _UVA_STATUS_MAP.get(uva_status.lower() if uva_status else '', None)
 
@@ -179,3 +206,22 @@ class UvaFleetService(models.AbstractModel):
             'failed':     'Delivery Failed',
         }
         return labels.get(status.lower() if status else '', status)
+
+    # State ordering for forward-only transition enforcement (M3)
+    _STATE_ORDER = {
+        'pending': 0, 'assigned': 1, 'in_transit': 2,
+        'delivered': 3, 'cancelled': 3, 'failed': 3,
+    }
+
+    @api.model
+    def _is_forward_transition(self, current_state, new_state):
+        """Return True if new_state is a valid forward transition.
+
+        Terminal states (delivered, cancelled, failed) cannot transition to
+        any other state — they are final.
+        """
+        if current_state in _TERMINAL_STATES:
+            return False  # terminal states are final
+        cur = self._STATE_ORDER.get(current_state, -1)
+        new = self._STATE_ORDER.get(new_state, -1)
+        return new > cur

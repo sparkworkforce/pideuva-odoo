@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<templates xml:space="preserve">
+
+    <t t-name="odoo_uva_connector.UvaMapField" owl="1">
+        <div t-if="mapUrl" style="width:100%;height:300px;border-radius:8px;overflow:hidden;"
+             data-testid="uva-map-field">
+            <iframe t-att-src="mapUrl" style="width:100%;height:100%;border:none;" loading="lazy"/>
+        </div>
+        <div t-else="" class="text-muted" data-testid="uva-map-field-empty">
+            No location data available
+        </div>
+    </t>
+
+</templates>

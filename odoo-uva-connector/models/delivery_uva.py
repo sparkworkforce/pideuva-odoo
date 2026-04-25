@@ -151,20 +151,25 @@ class DeliveryUva(models.Model):
                 )) from exc
             except UvaApiError as exc:
                 # Transient failure — enqueue retry (FR-10)
+                # Use savepoint so the retry entry survives the UserError rollback
                 store_id = self._get_store_id_for_retry()
                 if store_id:
-                    self.env['uva.api.retry.queue'].enqueue(
-                        action_type='create_fleet_delivery',
-                        payload=json.dumps({
-                            'pickup': pickup,
-                            'destination': destination,
-                            'reference': picking.name,
-                        }),
-                        res_model='stock.picking',
-                        res_id=picking.id,
-                        store_id=store_id,
-                        error=str(exc),
-                    )
+                    try:
+                        with self.env.cr.savepoint():
+                            self.env['uva.api.retry.queue'].sudo().enqueue(
+                                action_type='create_fleet_delivery',
+                                payload=json.dumps({
+                                    'pickup': pickup,
+                                    'destination': destination,
+                                    'reference': picking.name,
+                                }),
+                                res_model='stock.picking',
+                                res_id=picking.id,
+                                store_id=store_id,
+                                error=str(exc),
+                            )
+                    except Exception:
+                        pass  # enqueue failed — still raise UserError below
                 else:
                     # No store config found — cannot enqueue retry; notify merchant via chatter
                     _logger.error(
@@ -259,19 +264,23 @@ class DeliveryUva(models.Model):
             )) from exc
 
         except UvaApiError as exc:
-            # Transient failure — enqueue retry
+            # Transient failure — enqueue retry in savepoint
             store_id = self._get_store_id_for_retry()
             if store_id:
-                self.env['uva.api.retry.queue'].enqueue(
-                    action_type='cancel_fleet_delivery',
-                    payload=json.dumps({
-                        'delivery_id': fleet_delivery.uva_delivery_id,
-                    }),
-                    res_model='stock.picking',
-                    res_id=picking.id,
-                    store_id=store_id,
-                    error=str(exc),
-                )
+                try:
+                    with self.env.cr.savepoint():
+                        self.env['uva.api.retry.queue'].sudo().enqueue(
+                            action_type='cancel_fleet_delivery',
+                            payload=json.dumps({
+                                'delivery_id': fleet_delivery.uva_delivery_id,
+                            }),
+                            res_model='stock.picking',
+                            res_id=picking.id,
+                            store_id=store_id,
+                            error=str(exc),
+                        )
+                except Exception:
+                    pass
             raise UserError(_(
                 "Uva Fleet cancellation failed for %(picking)s: %(error)s\n"
                 "The request has been queued for automatic retry.",
@@ -315,5 +324,5 @@ class DeliveryUva(models.Model):
             'state': partner.state_id.code if partner.state_id else '',
             'country': partner.country_id.code if partner.country_id else 'PR',
             'phone': partner.phone or partner.mobile or '',
-            # TODO(uva-api): confirm exact address field names expected by Uva Fleet API
+            # See doc/api_compatibility.md for address field schema
         }

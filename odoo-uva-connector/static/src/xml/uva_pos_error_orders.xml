@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="odoo_uva_connector.UvaPosErrorOrders">
+        <div class="uva-error-orders" style="padding:12px;">
+            <h4>Error Orders</h4>
+            <t t-if="state.loading">
+                <div class="text-muted">Loading...</div>
+            </t>
+            <t t-elif="!state.orders.length">
+                <div class="text-muted">No error orders.</div>
+            </t>
+            <t t-else="">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Uva Order</th>
+                            <th>Received</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.orders" t-as="order" t-key="order.id">
+                            <tr>
+                                <td><t t-esc="order.external_id"/></td>
+                                <td><t t-esc="order.received_at"/></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success me-1" t-on-click="() => this.onRetry(order.id)">Retry</button>
+                                    <button class="btn btn-sm btn-danger" t-on-click="() => this.onReject(order.id)">Reject</button>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </t>
+        </div>
+    </t>
+</templates>

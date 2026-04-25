@@ -10,3 +10,11 @@ from . import uva_fleet_delivery
 from . import delivery_uva
 from . import uva_fleet_estimate_wizard
 from . import uva_fleet_service
+from . import uva_setup_wizard
+from . import uva_bulk_mapping_wizard
+from . import uva_product_alias
+from . import uva_notification
+from . import uva_order_rule
+from . import uva_menu_sync
+from . import sale_order
+from . import pos_order

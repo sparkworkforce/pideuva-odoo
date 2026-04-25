@@ -1,0 +1,327 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* odoo_uva_connector
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-25 00:00+0000\n"
+"PO-Revision-Date: 2026-04-25 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. -----------------------------------------------------------------------
+#. Field labels — uva.store.config
+#. -----------------------------------------------------------------------
+
+msgid "Store Name"
+msgstr "Nombre de la tienda"
+
+msgid "POS Configuration"
+msgstr "Configuración de POS"
+
+msgid "Uva API Key"
+msgstr "Clave API de Uva"
+
+msgid "Webhook Secret"
+msgstr "Secreto de Webhook"
+
+msgid "Auto-Accept Timeout (seconds)"
+msgstr "Tiempo límite de auto-aceptación (segundos)"
+
+msgid "Demo Mode"
+msgstr "Modo demostración"
+
+msgid "When enabled, all Uva API calls return mock responses. Enabled by default — disable only after configuring real API credentials."
+msgstr "Cuando está habilitado, todas las llamadas al API de Uva devuelven respuestas simuladas. Habilitado por defecto — desactive solo después de configurar credenciales reales."
+
+msgid "Enable Polling Fallback"
+msgstr "Habilitar sondeo de respaldo"
+
+msgid "Polling Interval (seconds)"
+msgstr "Intervalo de sondeo (segundos)"
+
+msgid "Last Polled At"
+msgstr "Último sondeo"
+
+msgid "POS Session State"
+msgstr "Estado de sesión POS"
+
+msgid "Connection Health"
+msgstr "Estado de conexión"
+
+#. -----------------------------------------------------------------------
+#. Validation errors — uva.store.config
+#. -----------------------------------------------------------------------
+
+msgid "Polling interval must be at least %(min)s seconds to avoid rate-limiting by the Uva API. Got: %(val)s seconds."
+msgstr "El intervalo de sondeo debe ser al menos %(min)s segundos para evitar límites de tasa del API de Uva. Valor recibido: %(val)s segundos."
+
+msgid "Auto-accept timeout cannot be negative. Use 0 for manual-only mode."
+msgstr "El tiempo de auto-aceptación no puede ser negativo. Use 0 para modo solo manual."
+
+msgid "No active Uva store configuration found for this POS session. Please configure a Uva store under Point of Sale > Configuration > Uva Stores."
+msgstr "No se encontró configuración activa de tienda Uva para esta sesión POS. Configure una tienda Uva en Punto de Venta > Configuración > Tiendas Uva."
+
+#. -----------------------------------------------------------------------
+#. Chatter — uva.store.config health
+#. -----------------------------------------------------------------------
+
+msgid "⚠️ Connection health is <b>%(status)s</b>. Last polled: %(last)s."
+msgstr "⚠️ El estado de conexión es <b>%(status)s</b>. Último sondeo: %(last)s."
+
+msgid "never"
+msgstr "nunca"
+
+msgid "Uva connection %(status)s"
+msgstr "Conexión Uva %(status)s"
+
+msgid "Store '%(name)s' health is %(status)s. Check API connectivity."
+msgstr "El estado de la tienda '%(name)s' es %(status)s. Verifique la conectividad del API."
+
+#. -----------------------------------------------------------------------
+#. Field labels — uva.order.log
+#. -----------------------------------------------------------------------
+
+msgid "Uva Order ID"
+msgstr "ID de pedido Uva"
+
+msgid "Store"
+msgstr "Tienda"
+
+msgid "POS Order"
+msgstr "Pedido POS"
+
+msgid "Raw Payload"
+msgstr "Datos crudos"
+
+msgid "State"
+msgstr "Estado"
+
+msgid "Received At"
+msgstr "Recibido el"
+
+msgid "Processed At"
+msgstr "Procesado el"
+
+#. -----------------------------------------------------------------------
+#. State selection values — uva.order.log
+#. -----------------------------------------------------------------------
+
+msgid "New"
+msgstr "Nuevo"
+
+msgid "Awaiting Mapping"
+msgstr "Esperando mapeo"
+
+msgid "Accepted"
+msgstr "Aceptado"
+
+msgid "Rejected"
+msgstr "Rechazado"
+
+msgid "Processed"
+msgstr "Procesado"
+
+msgid "Error"
+msgstr "Error"
+
+#. -----------------------------------------------------------------------
+#. UserError / chatter — uva.order.log actions
+#. -----------------------------------------------------------------------
+
+msgid "Cannot accept an order in state '%(state)s'. Only 'New' or 'Awaiting Mapping' orders can be accepted."
+msgstr "No se puede aceptar un pedido en estado '%(state)s'. Solo se pueden aceptar pedidos 'Nuevo' o 'Esperando mapeo'."
+
+msgid "Order accepted by staff."
+msgstr "Pedido aceptado por el personal."
+
+msgid "Cannot reject an order in state '%(state)s'."
+msgstr "No se puede rechazar un pedido en estado '%(state)s'."
+
+msgid "Order rejected. Reason: %(reason)s"
+msgstr "Pedido rechazado. Razón: %(reason)s"
+
+msgid "Order rejected."
+msgstr "Pedido rechazado."
+
+msgid "Only orders in 'Error' state can be retried. Current state: %(state)s"
+msgstr "Solo se pueden reintentar pedidos en estado 'Error'. Estado actual: %(state)s"
+
+msgid "Order retry initiated by merchant."
+msgstr "Reintento de pedido iniciado por el comerciante."
+
+msgid "Cannot mark as done from state '%(state)s'."
+msgstr "No se puede marcar como completado desde el estado '%(state)s'."
+
+msgid "Cannot mark as error from state '%(state)s'."
+msgstr "No se puede marcar como error desde el estado '%(state)s'."
+
+msgid "POS order creation failed: %(reason)s"
+msgstr "Falló la creación del pedido POS: %(reason)s"
+
+#. -----------------------------------------------------------------------
+#. Chatter — uva.order.service
+#. -----------------------------------------------------------------------
+
+msgid "⚠️ Order placed in 'Awaiting Mapping' state. The following Uva product IDs have no mapping: %(ids)s. Please add mappings under Point of Sale > Configuration > Uva Product Mappings."
+msgstr "⚠️ Pedido colocado en estado 'Esperando mapeo'. Los siguientes IDs de producto Uva no tienen mapeo: %(ids)s. Agregue mapeos en Punto de Venta > Configuración > Mapeo de Productos Uva."
+
+#. -----------------------------------------------------------------------
+#. Field labels / states — uva.api.retry.queue
+#. -----------------------------------------------------------------------
+
+msgid "Action Type"
+msgstr "Tipo de acción"
+
+msgid "Payload"
+msgstr "Datos"
+
+msgid "Related Model"
+msgstr "Modelo relacionado"
+
+msgid "Related Record ID"
+msgstr "ID de registro relacionado"
+
+msgid "Store Config"
+msgstr "Configuración de tienda"
+
+msgid "Last Error"
+msgstr "Último error"
+
+msgid "Retry Count"
+msgstr "Intentos de reintento"
+
+msgid "Next Retry At"
+msgstr "Próximo reintento"
+
+msgid "Pending"
+msgstr "Pendiente"
+
+msgid "Done"
+msgstr "Completado"
+
+msgid "Failed"
+msgstr "Fallido"
+
+msgid "Discarded"
+msgstr "Descartado"
+
+msgid "Only pending or failed entries can be retried."
+msgstr "Solo se pueden reintentar entradas pendientes o fallidas."
+
+msgid "Only pending or failed entries can be discarded."
+msgstr "Solo se pueden descartar entradas pendientes o fallidas."
+
+#. -----------------------------------------------------------------------
+#. Chatter — retry queue permanent failure
+#. -----------------------------------------------------------------------
+
+msgid "⚠️ Uva API retry failed permanently for action <b>%(action)s</b>.<br/>Reason: %(reason)s<br/>Retry attempts: %(count)s<br/>Please check the <a href='/web#model=uva.api.retry.queue&amp;id=%(id)s'>retry queue entry</a> for details."
+msgstr "⚠️ El reintento del API de Uva falló permanentemente para la acción <b>%(action)s</b>.<br/>Razón: %(reason)s<br/>Intentos: %(count)s<br/>Revise la <a href='/web#model=uva.api.retry.queue&amp;id=%(id)s'>entrada de la cola de reintentos</a> para más detalles."
+
+msgid "Uva API retry failed: %(action)s"
+msgstr "Reintento del API de Uva falló: %(action)s"
+
+msgid "Permanent failure after %(count)s retries. Last error: %(reason)s"
+msgstr "Fallo permanente después de %(count)s reintentos. Último error: %(reason)s"
+
+#. -----------------------------------------------------------------------
+#. Chatter — uva.fleet.service
+#. -----------------------------------------------------------------------
+
+msgid "🛵 <b>Uva Fleet Update</b>: %(label)s<br/>Status: <code>%(status)s</code><br/>Updated at: %(updated_at)s"
+msgstr "🛵 <b>Actualización Uva Fleet</b>: %(label)s<br/>Estado: <code>%(status)s</code><br/>Actualizado: %(updated_at)s"
+
+#. -----------------------------------------------------------------------
+#. uva.fleet.estimate.wizard
+#. -----------------------------------------------------------------------
+
+msgid "Delivery Order"
+msgstr "Orden de entrega"
+
+msgid "Carrier"
+msgstr "Transportista"
+
+msgid "Estimated Cost"
+msgstr "Costo estimado"
+
+msgid "Currency"
+msgstr "Moneda"
+
+msgid "Estimated Delivery Time (minutes)"
+msgstr "Tiempo estimado de entrega (minutos)"
+
+msgid "You do not have permission to dispatch deliveries."
+msgstr "No tiene permiso para despachar entregas."
+
+msgid "Missing picking or carrier information."
+msgstr "Falta información de la entrega o del transportista."
+
+#. -----------------------------------------------------------------------
+#. uva.setup.wizard
+#. -----------------------------------------------------------------------
+
+msgid "API Key is required when Demo Mode is disabled."
+msgstr "La clave API es requerida cuando el modo demostración está deshabilitado."
+
+msgid "Webhook Secret is required when Demo Mode is disabled."
+msgstr "El secreto de Webhook es requerido cuando el modo demostración está deshabilitado."
+
+msgid "Store Name is required."
+msgstr "El nombre de la tienda es requerido."
+
+msgid "POS Configuration is required."
+msgstr "La configuración de POS es requerida."
+
+msgid "Connection test is not yet available for live mode. Please enable demo mode or wait for Uva API integration."
+msgstr "La prueba de conexión aún no está disponible para modo en vivo. Habilite el modo demostración o espere la integración del API de Uva."
+
+msgid "Connection Test"
+msgstr "Prueba de conexión"
+
+msgid "Connection successful (demo mode)."
+msgstr "Conexión exitosa (modo demostración)."
+
+msgid "Complete the setup wizard first."
+msgstr "Complete el asistente de configuración primero."
+
+msgid "Product Mappings"
+msgstr "Mapeo de productos"
+
+#. -----------------------------------------------------------------------
+#. delivery_uva.py — UserError messages
+#. -----------------------------------------------------------------------
+
+msgid "Uva Fleet does not cover the delivery address for order %(order)s.\nDestination: %(dest)s\nPlease verify the zip code is within Uva's service area (San Juan, Dorado, Caguas and surrounding areas).\n\nDetails: %(detail)s"
+msgstr "Uva Fleet no cubre la dirección de entrega para el pedido %(order)s.\nDestino: %(dest)s\nVerifique que el código postal esté dentro del área de servicio de Uva (San Juan, Dorado, Caguas y áreas cercanas).\n\nDetalles: %(detail)s"
+
+msgid "Could not retrieve Uva Fleet estimate for order %(order)s: %(error)s\nPlease try again or contact Uva Fleet support."
+msgstr "No se pudo obtener el estimado de Uva Fleet para el pedido %(order)s: %(error)s\nIntente de nuevo o contacte al soporte de Uva Fleet."
+
+msgid "Uva Fleet cannot dispatch to this address — outside service coverage area.\nDestination zip code: %(zip)s\nUva Fleet covers: San Juan, Dorado, Caguas and surrounding PR areas.\n\nPlease correct the delivery address and try again.\nDetails: %(detail)s"
+msgstr "Uva Fleet no puede despachar a esta dirección — fuera del área de cobertura.\nCódigo postal de destino: %(zip)s\nUva Fleet cubre: San Juan, Dorado, Caguas y áreas cercanas de PR.\n\nCorrija la dirección de entrega e intente de nuevo.\nDetalles: %(detail)s"
+
+msgid "⚠️ Uva Fleet dispatch failed and could not be queued for retry (no active Uva store configuration found).\nError: %(error)s\nPlease retry manually."
+msgstr "⚠️ El despacho de Uva Fleet falló y no se pudo encolar para reintento (no se encontró configuración activa de tienda Uva).\nError: %(error)s\nReintente manualmente."
+
+msgid "Uva Fleet dispatch failed for %(picking)s: %(error)s\nThe request has been queued for automatic retry."
+msgstr "El despacho de Uva Fleet falló para %(picking)s: %(error)s\nLa solicitud fue encolada para reintento automático."
+
+msgid "No active Uva Fleet delivery found for %(picking)s."
+msgstr "No se encontró entrega activa de Uva Fleet para %(picking)s."
+
+msgid "Delivery cancelled by merchant from Odoo."
+msgstr "Entrega cancelada por el comerciante desde Odoo."
+
+msgid "Uva Fleet rejected the cancellation: %(detail)s"
+msgstr "Uva Fleet rechazó la cancelación: %(detail)s"
+
+msgid "Uva Fleet cancellation failed for %(picking)s: %(error)s\nThe request has been queued for automatic retry."
+msgstr "La cancelación de Uva Fleet falló para %(picking)s: %(error)s\nLa solicitud fue encolada para reintento automático."

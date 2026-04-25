@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html) -->
+<odoo>
+
+    <!-- Pivot view: Uva revenue from pos.order -->
+    <record id="view_uva_revenue_pivot" model="ir.ui.view">
+        <field name="name">pos.order.uva.revenue.pivot</field>
+        <field name="model">pos.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Uva Revenue">
+                <field name="date_order" interval="day" type="row"/>
+                <field name="session_id" type="row"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Graph view: Uva revenue over time -->
+    <record id="view_uva_revenue_graph" model="ir.ui.view">
+        <field name="name">pos.order.uva.revenue.graph</field>
+        <field name="model">pos.order</field>
+        <field name="arch" type="xml">
+            <graph string="Uva Revenue" type="line">
+                <field name="date_order" interval="day"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_uva_revenue_report" model="ir.actions.act_window">
+        <field name="name">Uva Revenue</field>
+        <field name="res_model">pos.order</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('is_uva_order', '=', True)]</field>
+        <field name="context">{'search_default_group_by_date': 1}</field>
+    </record>
+
+    <!-- Menu under Uva > Analytics -->
+    <menuitem id="menu_uva_analytics_revenue"
+              name="Revenue"
+              parent="menu_uva_analytics"
+              action="action_uva_revenue_report"
+              sequence="3"/>
+
+</odoo>

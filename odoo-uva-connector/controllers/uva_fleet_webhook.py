@@ -81,6 +81,17 @@ class UvaFleetStatusWebhookController(http.Controller):
         ICP = env['ir.config_parameter'].sudo()
         webhook_secret = ICP.get_param('uva.fleet.webhook_secret', '')
 
+        if not webhook_secret:
+            _logger.warning(
+                "UvaFleetStatusWebhookController: webhook_secret not configured for company_id=%s",
+                company_id,
+            )
+            return Response(
+                json.dumps({'error': 'webhook not configured'}),
+                status=403,
+                mimetype='application/json',
+            )
+
         # Step 3: Validate HMAC — fail closed (SECURITY-15, BR-01)
         raw_body = request.httprequest.get_data()
         signature = request.httprequest.headers.get('X-Uva-Signature', '')
@@ -91,8 +102,8 @@ class UvaFleetStatusWebhookController(http.Controller):
                 company_id,
             )
             return Response(
-                json.dumps({'error': 'invalid signature'}),
-                status=400,
+                json.dumps({'error': 'forbidden'}),
+                status=403,
                 mimetype='application/json',
             )
 
@@ -110,17 +121,68 @@ class UvaFleetStatusWebhookController(http.Controller):
                 mimetype='application/json',
             )
 
-        # Step 5: Delegate to service
-        # TODO(uva-api): confirm exact payload field names from Uva Fleet webhook docs
+        # Step 5: Delegate to service — see doc/api_compatibility.md for payload schema
         delivery_id = payload.get('delivery_id') or payload.get('id', '')
         status = payload.get('status', '')
         updated_at = payload.get('updated_at') or payload.get('timestamp', '')
 
+        # L4: Validate required fields are non-empty
+        if not delivery_id or not status:
+            _logger.warning(
+                "UvaFleetStatusWebhookController: missing delivery_id or status for company_id=%s",
+                company_id,
+            )
+            return Response(
+                json.dumps({'error': 'missing required fields'}),
+                status=400,
+                mimetype='application/json',
+            )
+
+        # Validate delivery belongs to the specified company
+        fleet_del = env['uva.fleet.delivery'].search([
+            ('uva_delivery_id', '=', delivery_id),
+        ], limit=1)
+        if fleet_del and fleet_del.company_id.id != company_id:
+            _logger.warning(
+                "UvaFleetStatusWebhookController: delivery %s belongs to company %s, not %s",
+                delivery_id, fleet_del.company_id.id, company_id,
+            )
+            return Response(
+                json.dumps({'error': 'forbidden'}),
+                status=403,
+                mimetype='application/json',
+            )
+
+        # M3: Replay protection — reject payloads with stale timestamps
+        ts = payload.get('timestamp') or payload.get('updated_at')
+        if ts:
+            try:
+                from odoo import fields as odoo_fields
+                ts_dt = odoo_fields.Datetime.to_datetime(ts)
+                if ts_dt and abs((odoo_fields.Datetime.now() - ts_dt).total_seconds()) > 300:
+                    _logger.warning(
+                        "UvaFleetStatusWebhookController: stale timestamp for company_id=%s",
+                        company_id,
+                    )
+                    return Response(
+                        json.dumps({'error': 'stale request'}),
+                        status=400,
+                        mimetype='application/json',
+                    )
+            except (ValueError, TypeError):
+                pass  # unparseable timestamp — let the service layer handle it
+
         try:
+            extra_kwargs = {}
+            for fld in ('eta_minutes', 'driver_name', 'driver_phone', 'driver_lat', 'driver_lng',
+                        'proof_photo_url', 'delivery_signature'):
+                if fld in payload and payload[fld] is not None:
+                    extra_kwargs[fld] = payload[fld]
             env['uva.fleet.service'].process_status_update(
                 delivery_id=delivery_id,
                 status=status,
                 updated_at=updated_at,
+                **extra_kwargs,
             )
             return Response(
                 json.dumps({'status': 'ok'}),
