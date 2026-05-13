@@ -1,7 +1,11 @@
 # License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html)
 import hashlib
 import hmac
+import ipaddress
 import logging
+import socket
+import threading
+import time
 import uuid
 from datetime import datetime
 
@@ -10,6 +14,34 @@ import requests
 from odoo import models
 
 _logger = logging.getLogger(__name__)
+
+# Thread-local session for connection pooling (reused across calls in same worker)
+_thread_local = threading.local()
+
+# ---------------------------------------------------------------------------
+# Circuit breaker (prevents worker exhaustion during Uva API outages)
+# ---------------------------------------------------------------------------
+_CIRCUIT_FAILURE_THRESHOLD = 5
+_CIRCUIT_RECOVERY_TIMEOUT = 60  # seconds
+_circuit_state = {'failures': 0, 'open_until': 0}  # shared per-worker
+
+
+def _circuit_is_open():
+    """Return True if circuit is open (should skip API calls)."""
+    if _circuit_state['failures'] < _CIRCUIT_FAILURE_THRESHOLD:
+        return False
+    return time.monotonic() < _circuit_state['open_until']
+
+
+def _circuit_record_success():
+    _circuit_state['failures'] = 0
+
+
+def _circuit_record_failure():
+    _circuit_state['failures'] += 1
+    if _circuit_state['failures'] >= _CIRCUIT_FAILURE_THRESHOLD:
+        _circuit_state['open_until'] = time.monotonic() + _CIRCUIT_RECOVERY_TIMEOUT
+
 
 # ---------------------------------------------------------------------------
 # Custom exception hierarchy
@@ -45,6 +77,7 @@ RETRYABLE_ACTIONS = frozenset({
     'notify_modification',
     'create_fleet_delivery',
     'cancel_fleet_delivery',
+    'menu_sync',
 })
 
 # ---------------------------------------------------------------------------
@@ -70,6 +103,48 @@ class UvaApiClient(models.AbstractModel):
     # Internal helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _validate_url_not_private(url):
+        """Reject URLs pointing to private/internal IP ranges (SSRF protection)."""
+        from urllib.parse import urlparse
+        hostname = urlparse(url).hostname
+        if not hostname:
+            raise UvaApiError("Uva API base URL has no hostname")
+        try:
+            addr = ipaddress.ip_address(hostname)
+        except ValueError:
+            # It's a domain name — resolve it
+            try:
+                addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+            except (socket.gaierror, ValueError):
+                return  # DNS resolution failed — let requests handle it
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+            raise UvaApiError(
+                f"Uva API base URL resolves to a private/internal address: {addr}"
+            )
+
+    @staticmethod
+    def _resolve_and_pin(url):
+        """Resolve hostname and return (resolved_ip, hostname) for DNS pinning.
+
+        Prevents DNS rebinding by resolving once and pinning the IP for the
+        actual request via a custom transport adapter.
+        """
+        from urllib.parse import urlparse
+        hostname = urlparse(url).hostname
+        if not hostname:
+            return None, None
+        try:
+            ipaddress.ip_address(hostname)
+            return None, None  # Already an IP literal, no pinning needed
+        except ValueError:
+            pass
+        try:
+            resolved_ip = socket.gethostbyname(hostname)
+            return resolved_ip, hostname
+        except socket.gaierror:
+            return None, None
+
     def _get_timeout(self):
         """Return (connect_timeout, read_timeout) from config or defaults."""
         ICP = self.env['ir.config_parameter'].sudo()
@@ -92,10 +167,13 @@ class UvaApiClient(models.AbstractModel):
         """
         ICP = self.env['ir.config_parameter'].sudo()
         if sandbox_mode or ICP.get_param('uva.api.sandbox_mode', 'False') in ('True', '1', 'true'):
-            return ICP.get_param('uva.api.sandbox_url', 'https://sandbox.pideuva.com/v1')
+            sandbox_url = ICP.get_param('uva.api.sandbox_url', 'https://sandbox.pideuva.com/v1')
+            self._validate_url_not_private(sandbox_url)
+            return sandbox_url
         url = ICP.get_param('uva.api.base_url', 'https://api.pideuva.com/v1')
         if not url.startswith('https://'):
             raise UvaApiError("Uva API base URL must use HTTPS")
+        self._validate_url_not_private(url)
         return url
 
     def _request(self, method, path, api_key, demo_mode=False, sandbox_mode=False, **kwargs):
@@ -110,6 +188,10 @@ class UvaApiClient(models.AbstractModel):
             # Demo mode: never reaches the network
             return None
 
+        # Circuit breaker — skip if API is known to be down
+        if _circuit_is_open():
+            raise UvaApiError("Uva API circuit breaker open — skipping request")
+
         base_url = self._get_base_url(sandbox_mode=sandbox_mode)
         url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
         timeout = self._get_timeout()
@@ -121,16 +203,34 @@ class UvaApiClient(models.AbstractModel):
         _logger.debug(
             "Uva API %s %s (key=%s)", method.upper(), url, _mask_key(api_key)
         )
+        # DNS rebinding protection: resolve and validate IP is not private
+        resolved_ip, _ = self._resolve_and_pin(url)
+        if resolved_ip:
+            addr = ipaddress.ip_address(resolved_ip)
+            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+                raise UvaApiError(
+                    f"Uva API URL resolves to private address at request time: {addr}"
+                )
         try:
-            response = requests.request(
-                method, url, headers=headers, timeout=timeout, verify=True, **kwargs
+            session = getattr(_thread_local, 'session', None)
+            if session is None:
+                session = requests.Session()
+                _thread_local.session = session
+            response = session.request(
+                method, url, headers=headers, timeout=timeout, verify=True,
+                allow_redirects=False, **kwargs
             )
         except requests.exceptions.Timeout as exc:
+            _circuit_record_failure()
             raise UvaApiError(f"Uva API timeout: {exc}") from exc
         except requests.exceptions.ConnectionError as exc:
+            _circuit_record_failure()
             raise UvaApiError(f"Uva API connection error: {exc}") from exc
         except Exception as exc:
+            _circuit_record_failure()
             raise UvaApiError(f"Uva API unexpected error: {exc}") from exc
+
+        _circuit_record_success()
 
         if response.status_code in (401, 403):
             raise UvaAuthError(

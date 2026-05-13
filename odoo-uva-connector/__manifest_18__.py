@@ -1,4 +1,4 @@
-# License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html)
+# License: OPL-1 (https://www.odoo.com/documentation/18.0/legal/licenses.html)
 # Odoo 18 manifest. Copied to __manifest__.py by build.sh before packaging.
 {
     'name': 'Uva PR Connector',
@@ -27,6 +27,7 @@ Supports Odoo 17, 18, and 19 Enterprise.
     'depends': [
         'point_of_sale',
         'delivery',
+        'sale',
         'sale_stock',
         'mail',
         'base_setup',
@@ -39,10 +40,14 @@ Supports Odoo 17, 18, and 19 Enterprise.
         'data/uva_cron_fleet_polling.xml',
         'data/uva_cron_purge_raw_payload.xml',
         'data/uva_cron_health_check.xml',
+        'data/uva_cron_auto_accept.xml',
+        'data/uva_cron_menu_sync.xml',
+        'data/uva_cron_performance_alerts.xml',
         'views/uva_store_config_views.xml',
         'views/uva_product_mapping_views.xml',
         'views/uva_product_alias_views.xml',
         'views/uva_order_log_views.xml',
+        'views/uva_order_rule_views.xml',
         'views/uva_fleet_delivery_views.xml',
         'views/uva_fleet_estimate_wizard_views.xml',
         'views/uva_bulk_mapping_wizard_views.xml',
@@ -50,7 +55,9 @@ Supports Odoo 17, 18, and 19 Enterprise.
         'views/res_config_settings_views.xml',
         'views/uva_dashboard_views.xml',
         'views/uva_analytics_views.xml',
+        'views/uva_revenue_report_views.xml',
         'views/uva_tracking_template.xml',
+        'views/sale_order_views.xml',
     ],
     'assets': {
         'point_of_sale._assets_pos': [
@@ -59,6 +66,8 @@ Supports Odoo 17, 18, and 19 Enterprise.
             'odoo_uva_connector/static/src/js/uva_pos_order_popup.js',
             'odoo_uva_connector/static/src/js/uva_pos_screen.js',
             'odoo_uva_connector/static/src/js/uva_pos_health_indicator.js',
+            'odoo_uva_connector/static/src/js/uva_pos_error_orders.js',
+            'odoo_uva_connector/static/src/js/uva_pos_offline.js',
             'odoo_uva_connector/static/src/xml/uva_pos_order_popup.xml',
             'odoo_uva_connector/static/src/xml/uva_pos_screen.xml',
             'odoo_uva_connector/static/src/xml/uva_pos_health_indicator.xml',
@@ -66,6 +75,7 @@ Supports Odoo 17, 18, and 19 Enterprise.
         'web.assets_backend': [
             'odoo_uva_connector/static/src/js/uva_map_field.js',
             'odoo_uva_connector/static/src/xml/uva_map_field.xml',
+            'odoo_uva_connector/static/src/js/uva_zone_widget.js',
             'odoo_uva_connector/static/src/js/uva_dashboard_action.js',
             'odoo_uva_connector/static/src/xml/uva_dashboard_action.xml',
         ],

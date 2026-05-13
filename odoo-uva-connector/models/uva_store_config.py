@@ -36,10 +36,20 @@ class UvaStoreConfig(models.Model):
         groups='base.group_system',
         help='Uva Orders API key. Visible to system administrators only.',
     )
+    fleet_api_key = fields.Char(
+        string='Fleet API Key (per-store)',
+        groups='base.group_system',
+        help='Optional per-store Fleet API key. Falls back to global uva.fleet.api_key if empty.',
+    )
     webhook_secret = fields.Char(
         string='Webhook Secret',
         groups='base.group_system',
         help='Shared secret for HMAC validation of incoming Uva webhooks.',
+    )
+    webhook_secret_previous = fields.Char(
+        string='Previous Webhook Secret',
+        groups='base.group_system',
+        help='Previous secret accepted during rotation. Clear after rotation is complete.',
     )
 
     # Behaviour
@@ -196,6 +206,15 @@ class UvaStoreConfig(models.Model):
             if rec.store_hours_enabled and rec.opening_time == rec.closing_time:
                 raise ValidationError(
                     _('Opening and closing times cannot be the same when store hours are enabled.')
+                )
+
+    @api.constrains('mapping_confidence_threshold')
+    def _check_mapping_confidence_threshold(self):
+        for rec in self:
+            if rec.mapping_confidence_threshold < 1 or rec.mapping_confidence_threshold > 100:
+                raise ValidationError(
+                    _('Auto-Map Confidence must be between 1 and 100. Got: %(val)s.',
+                      val=rec.mapping_confidence_threshold)
                 )
 
     # ------------------------------------------------------------------
@@ -423,6 +442,28 @@ class UvaStoreConfig(models.Model):
                     {'store_id': store.id, 'store_name': store.name,
                      'acceptance_rate': store.uva_acceptance_rate},
                 )
+
+        # Retry queue depth alert — warn if too many pending entries
+        pending_count = self.env['uva.api.retry.queue'].search_count([
+            ('state', '=', 'pending'),
+        ])
+        if pending_count > 100:
+            existing = self.env['mail.activity'].search([
+                ('res_model', '=', 'uva.api.retry.queue'),
+                ('summary', 'ilike', 'retry queue'),
+            ], limit=1)
+            if not existing:
+                admin = self.env.ref('base.user_admin', raise_if_not_found=False)
+                if admin:
+                    self.env['mail.activity'].create({
+                        'res_model_id': self.env['ir.model']._get_id('uva.api.retry.queue'),
+                        'res_id': 0,
+                        'activity_type_id': self.env.ref('mail.mail_activity_data_todo').id,
+                        'user_id': admin.id,
+                        'summary': _("Retry queue depth: %s pending", pending_count),
+                        'note': _("The Uva API retry queue has %s pending entries. "
+                                  "Check if the Uva API is down or rate-limiting.", pending_count),
+                    })
 
     # ------------------------------------------------------------------
     # Display

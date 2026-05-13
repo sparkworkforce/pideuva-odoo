@@ -2,17 +2,18 @@
 
 import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
+import { registry } from "@web/core/registry";
 import { subscribePosChannel, unsubscribePosChannel } from "./uva_bus_compat";
 
 const MAX_QUEUE = 50;
 
 export class UvaPosScreen extends Component {
     static template = "odoo_uva_connector.UvaPosScreen";
-    static props = {};
+    static props = { posConfigId: { type: Number, optional: true } };
 
     setup() {
         this.busService = useService("bus_service");
-        this.rpc = useService("rpc");
+        this.orm = useService("orm");
 
         this.state = useState({
             orderQueue: [],
@@ -28,6 +29,7 @@ export class UvaPosScreen extends Component {
             this._busWrapper = subscribePosChannel(
                 this.busService, "uva_new_order", this._handleNewOrder.bind(this)
             );
+            this._fetchPendingOrders();
         });
 
         onWillUnmount(() => {
@@ -36,7 +38,27 @@ export class UvaPosScreen extends Component {
         });
     }
 
+    async _fetchPendingOrders() {
+        if (!this.props.posConfigId) return;
+        try {
+            const orders = await this.orm.call(
+                "uva.order.service",
+                "get_pending_for_pos",
+                [this.props.posConfigId],
+            );
+            for (const order of orders || []) {
+                this._handleNewOrder(order);
+            }
+        } catch (_e) {
+            // Non-critical — orders will arrive via bus
+        }
+    }
+
     _handleNewOrder(payload) {
+        // Dedup: ignore if order_id already in queue
+        if (payload.order_id && this.state.orderQueue.some((o) => o.order_id === payload.order_id)) {
+            return;
+        }
         if (this.state.orderQueue.length >= MAX_QUEUE) {
             this.state.orderQueue.shift();
         }
@@ -81,12 +103,11 @@ export class UvaPosScreen extends Component {
         this.state.submitting = true;
         this.state.error = null;
         try {
-            await this.rpc("/web/dataset/call_kw", {
-                model: "uva.order.service",
-                method: "process_staff_action",
-                args: [this.state.selectedOrder.order_id, "accept", Object.keys(this.state.unavailableItems)],
-                kwargs: {},
-            });
+            await this.orm.call(
+                "uva.order.service",
+                "process_staff_action",
+                [this.state.selectedOrder.order_id, "accept", Object.keys(this.state.unavailableItems)],
+            );
             this._removeFromQueue(this.state.selectedOrder.order_id);
         } catch (e) {
             this.state.error = "Failed to accept order. Please try again.";
@@ -99,12 +120,11 @@ export class UvaPosScreen extends Component {
         this.state.submitting = true;
         this.state.error = null;
         try {
-            await this.rpc("/web/dataset/call_kw", {
-                model: "uva.order.service",
-                method: "process_staff_action",
-                args: [this.state.selectedOrder.order_id, "reject", []],
-                kwargs: {},
-            });
+            await this.orm.call(
+                "uva.order.service",
+                "process_staff_action",
+                [this.state.selectedOrder.order_id, "reject", []],
+            );
             this._removeFromQueue(this.state.selectedOrder.order_id);
         } catch (e) {
             this.state.error = "Failed to reject order. Please try again.";
@@ -112,3 +132,6 @@ export class UvaPosScreen extends Component {
         this.state.submitting = false;
     }
 }
+
+
+registry.category("pos_screens").add("UvaPosScreen", UvaPosScreen);

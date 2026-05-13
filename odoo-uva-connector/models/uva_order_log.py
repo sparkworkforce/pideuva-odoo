@@ -58,6 +58,7 @@ class UvaOrderLog(models.Model):
         string='Received At',
         required=True,
         default=fields.Datetime.now,
+        index=True,
     )
     processed_at = fields.Datetime(
         string='Processed At',
@@ -143,6 +144,14 @@ class UvaOrderLog(models.Model):
         ('external_id_unique', 'UNIQUE(external_id)',
          'An order with this Uva external ID already exists. Duplicate orders are rejected.'),
     ]
+
+    def init(self):
+        """Create composite index for dashboard/POS queries."""
+        super().init()
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS uva_order_log_store_received_state_idx
+            ON uva_order_log (store_id, received_at, state)
+        """)
 
     # ------------------------------------------------------------------
     # State machine — action methods
@@ -319,17 +328,38 @@ class UvaOrderLog(models.Model):
 
     @api.model
     def _get_per_store_stats(self, today):
-        """Per-store breakdown for dashboard."""
+        """Per-store breakdown for dashboard (single read_group query)."""
+        dt_today = fields.Datetime.to_string(today)
+        domain = [('received_at', '>=', dt_today)]
+        # Single grouped query instead of N+1 per store
+        groups = self.read_group(
+            domain, ['store_id', 'state'], ['store_id', 'state'], lazy=False,
+        )
+        # Build lookup: {store_id: {state: count}}
+        stats = {}
+        for g in groups:
+            sid = g['store_id'][0] if g['store_id'] else False
+            if not sid:
+                continue
+            stats.setdefault(sid, {})
+            stats[sid][g['state']] = g['__count']
+
+        # Avg processing time — single read_group instead of loading full records
+        avg_groups = self.read_group(
+            [('received_at', '>=', dt_today), ('state', '=', 'done'), ('processing_time', '>', 0)],
+            ['store_id', 'processing_time:avg'], ['store_id'],
+        )
+        proc_by_store = {g['store_id'][0]: g['processing_time'] for g in avg_groups if g['store_id']}
+
         stores = self.env['uva.store.config'].search([('active', '=', True)])
         result = []
-        dt_today = fields.Datetime.to_string(today)
         for s in stores:
-            domain = [('store_id', '=', s.id), ('received_at', '>=', dt_today)]
-            total = self.search_count(domain)
-            accepted = self.search_count(domain + [('state', 'in', ('accepted', 'done'))])
-            errors = self.search_count(domain + [('state', '=', 'error')])
-            done = self.search(domain + [('state', '=', 'done'), ('processing_time', '>', 0)])
-            avg_min = round(sum(done.mapped('processing_time')) / len(done) * 60, 1) if done else 0.0
+            st = stats.get(s.id, {})
+            total = sum(st.values())
+            accepted = st.get('accepted', 0) + st.get('done', 0)
+            errors = st.get('error', 0)
+            procs = proc_by_store.get(s.id, 0)
+            avg_min = round(procs * 60, 1) if procs else 0.0
             result.append({
                 'store_id': s.id,
                 'store_name': s.name,
@@ -362,10 +392,14 @@ class UvaOrderLog(models.Model):
     def purge_raw_payloads(self, days=30):
         """Clear raw_payload on records older than `days` days (GDPR/PII)."""
         cutoff = fields.Datetime.now() - timedelta(days=days)
-        records = self.sudo().search([
-            ('received_at', '<', cutoff),
-            ('raw_payload', '!=', False),
-        ])
-        records.write({'raw_payload': False})
+        while True:
+            records = self.sudo().search([
+                ('received_at', '<', cutoff),
+                ('raw_payload', '!=', False),
+            ], limit=5000)
+            if not records:
+                break
+            records.write({'raw_payload': False})
+            self.env.cr.commit()
 
 

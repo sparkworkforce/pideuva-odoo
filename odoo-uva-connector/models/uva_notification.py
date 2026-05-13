@@ -64,11 +64,17 @@ class UvaNotification(models.Model):
                 rec.write({'state': 'sent'})
                 rec._post_chatter()
                 continue
-            # SSRF protection: only allow HTTPS URLs
+            # SSRF protection: only allow HTTPS URLs and validate IP
             from urllib.parse import urlparse
             parsed = urlparse(webhook_url)
             if parsed.scheme != 'https':
                 rec.write({'state': 'failed', 'error': 'Webhook URL must use HTTPS'})
+                rec._post_chatter()
+                continue
+            try:
+                self.env['uva.api.client']._validate_url_not_private(webhook_url)
+            except Exception as exc:
+                rec.write({'state': 'failed', 'error': f'Webhook URL blocked: {exc}'})
                 rec._post_chatter()
                 continue
             try:

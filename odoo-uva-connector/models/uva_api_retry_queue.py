@@ -23,7 +23,7 @@ class UvaApiRetryQueue(models.Model):
     _order = 'next_retry_at asc'
 
     _ALLOWED_RES_MODELS = frozenset({
-        'uva.order.log', 'uva.fleet.delivery', 'stock.picking',
+        'uva.order.log', 'uva.fleet.delivery', 'stock.picking', 'uva.menu.sync',
     })
 
     # ------------------------------------------------------------------
@@ -56,7 +56,7 @@ class UvaApiRetryQueue(models.Model):
         help='Store config used to retrieve api_key at retry time. '
              'Cannot be deleted while pending retry entries exist (BR-05).',
     )
-    error = fields.Text(string='Last Error', readonly=True)
+    error = fields.Text(string='Last Error', readonly=True, groups='base.group_system')
     retry_count = fields.Integer(string='Retry Count', default=0, readonly=True)
     next_retry_at = fields.Datetime(
         string='Next Retry At', index=True,
@@ -68,7 +68,7 @@ class UvaApiRetryQueue(models.Model):
         ('failed',     'Failed'),
         ('discarded',  'Discarded'),
     ], string='State', default='pending', required=True, index=True, readonly=True)
-    processed_at = fields.Datetime(string='Processed At', readonly=True)
+    processed_at = fields.Datetime(string='Processed At', readonly=True, index=True)
 
     # ------------------------------------------------------------------
     # Enqueue
@@ -264,6 +264,29 @@ class UvaApiRetryQueue(models.Model):
                         })
         elif action == 'cancel_fleet_delivery':
             client.cancel_delivery(api_key, payload['delivery_id'], demo_mode=demo_mode)
+        elif action == 'menu_sync':
+            store = self.env['uva.store.config'].browse(payload.get('store_id'))
+            if store.exists():
+                mappings = self.env['uva.product.mapping'].search([
+                    ('store_id', '=', store.id),
+                ])
+                mappings.mapped('odoo_product_id.categ_id')
+                products_data = [{
+                    'uva_product_id': m.uva_product_id,
+                    'name': m.odoo_product_id.name,
+                    'price': m.odoo_product_id.lst_price,
+                    'available': m.odoo_product_id.active,
+                    'category': m.odoo_product_id.categ_id.name if m.odoo_product_id.categ_id else '',
+                } for m in mappings]
+                batch_size = 500
+                for i in range(0, max(len(products_data), 1), batch_size):
+                    batch = products_data[i:i + batch_size]
+                    client._request('POST', '/menu/sync', api_key, json={
+                        'sync_type': payload.get('sync_type', 'full'),
+                        'products': batch,
+                        'batch_index': i // batch_size,
+                        'total_products': len(products_data),
+                    })
         else:
             raise UvaApiError(f"Unknown action_type in retry dispatch: {action}")
 
@@ -350,9 +373,13 @@ class UvaApiRetryQueue(models.Model):
     def purge_done_payloads(self, days=30):
         """Clear payload on done/failed/discarded entries older than `days` days."""
         cutoff = fields.Datetime.now() - timedelta(days=days)
-        records = self.sudo().search([
-            ('state', 'in', ('done', 'failed', 'discarded')),
-            ('processed_at', '<', cutoff),
-            ('payload', '!=', False),
-        ])
-        records.write({'payload': False})
+        while True:
+            records = self.sudo().search([
+                ('state', 'in', ('done', 'failed', 'discarded')),
+                ('processed_at', '<', cutoff),
+                ('payload', '!=', False),
+            ], limit=5000)
+            if not records:
+                break
+            records.write({'payload': False})
+            self.env.cr.commit()

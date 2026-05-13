@@ -12,7 +12,6 @@
             <field name="interval_type">minutes</field>
             <field name="numbercall">-1</field>
             <field name="active">True</field>
-            <field name="priority">10</field>
         </record>
     </data>
 </odoo>

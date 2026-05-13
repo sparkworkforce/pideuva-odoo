@@ -68,6 +68,27 @@ def _check_rate_limit(key):
 
 class UvaTrackingController(http.Controller):
 
+    @http.route('/uva/health', type='http', auth='none', methods=['GET'], csrf=False)
+    def health_check(self, **kwargs):
+        """External monitoring endpoint — returns connector health status."""
+        env = request.env(user=1)
+        retry_pending = env['uva.api.retry.queue'].search_count([('state', '=', 'pending')])
+        last_poll = env['uva.store.config'].search(
+            [('active', '=', True), ('last_polled_at', '!=', False)],
+            order='last_polled_at desc', limit=1,
+        )
+        data = {
+            'status': 'ok',
+            'retry_queue_pending': retry_pending,
+            'last_poll_at': str(last_poll.last_polled_at) if last_poll else None,
+        }
+        status = 200 if retry_pending < 200 else 503
+        return request.make_response(
+            json.dumps(data),
+            status=status,
+            headers=[('Content-Type', 'application/json')],
+        )
+
     def _get_tracking_lang(self):
         accept = request.httprequest.headers.get('Accept-Language', '')
         first_lang = accept.lower().split(',')[0].strip()
@@ -79,9 +100,14 @@ class UvaTrackingController(http.Controller):
         if not _check_rate_limit(f'track:{ip}'):
             return request.make_response('Too many requests', status=429)
 
+        # Look up by tracking_token (random UUID) first, fall back to uva_delivery_id
         delivery = request.env['uva.fleet.delivery'].sudo().search(
-            [('uva_delivery_id', '=', tracking_id)], limit=1,
+            [('tracking_token', '=', tracking_id)], limit=1,
         )
+        if not delivery:
+            delivery = request.env['uva.fleet.delivery'].sudo().search(
+                [('uva_delivery_id', '=', tracking_id)], limit=1,
+            )
         if not delivery:
             return request.not_found()
         lang = self._get_tracking_lang()
@@ -98,11 +124,23 @@ class UvaTrackingController(http.Controller):
             'lang': lang_strings,
             # Intentionally omit driver_name and driver_phone from public page
         })
-        return request.render('odoo_uva_connector.tracking_page', {
+        response = request.render('odoo_uva_connector.tracking_page', {
             'delivery': delivery,
             'tracking_data_json': tracking_data,
             'lang': lang_strings,
         })
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'none'; "
+            "script-src 'self' https://unpkg.com 'unsafe-inline'; "
+            "style-src 'self' https://unpkg.com 'unsafe-inline'; "
+            "img-src 'self' https://*.tile.openstreetmap.org https://*.openstreetmap.org data:; "
+            "connect-src 'self'; "
+            "font-src 'self'"
+        )
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
+        return response
 
     @http.route('/uva/track/<string:tracking_id>/status', type='http', auth='public',
                 methods=['GET'], csrf=False)
@@ -116,8 +154,12 @@ class UvaTrackingController(http.Controller):
             )
 
         delivery = request.env['uva.fleet.delivery'].sudo().search(
-            [('uva_delivery_id', '=', tracking_id)], limit=1,
+            [('tracking_token', '=', tracking_id)], limit=1,
         )
+        if not delivery:
+            delivery = request.env['uva.fleet.delivery'].sudo().search(
+                [('uva_delivery_id', '=', tracking_id)], limit=1,
+            )
         if not delivery:
             return request.not_found()
         # Do NOT expose driver_name, driver_phone, or precise driver GPS to public

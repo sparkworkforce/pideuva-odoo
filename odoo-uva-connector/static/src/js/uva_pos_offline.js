@@ -64,9 +64,18 @@ export class UvaPosOffline extends Component {
             queue = [];
         }
         localStorage.removeItem(OFFLINE_QUEUE_KEY);
-        // Re-emit cached orders as bus events so the POS popup shows them for staff review
-        // instead of auto-accepting (staff must explicitly accept after reviewing)
+        // Deduplicate by external_id before replaying to avoid showing orders
+        // that the server already delivered via bus after reconnection
+        const seen = new Set();
+        const unique = [];
         for (const order of queue) {
+            const key = order.external_id || order.id || JSON.stringify(order);
+            if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(order);
+            }
+        }
+        for (const order of unique) {
             this.busService.trigger("uva_new_order", order);
         }
     }

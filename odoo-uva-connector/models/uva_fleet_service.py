@@ -26,9 +26,10 @@ _TERMINAL_STATES = frozenset({'delivered', 'cancelled', 'failed'})
 _MIN_POLL_INTERVAL = 60  # seconds
 
 
-class UvaFleetService(models.AbstractModel):
+class UvaFleetService(models.Model):
     _name = 'uva.fleet.service'
     _description = 'Uva Fleet Status Service'
+    _auto = False
 
     # ------------------------------------------------------------------
     # Main entry point — called by webhook and polling cron
@@ -83,6 +84,15 @@ class UvaFleetService(models.AbstractModel):
                     'proof_photo_url', 'delivery_signature'):
             if fld in kwargs and kwargs[fld] is not None:
                 vals[fld] = kwargs[fld]
+        # Validate proof_photo_url — only allow HTTPS URLs, max 2048 chars
+        if vals.get('proof_photo_url'):
+            url = vals['proof_photo_url']
+            if not isinstance(url, str) or not url.startswith('https://') or len(url) > 2048:
+                _logger.warning(
+                    "[uva:%s] process_status_update: rejected invalid proof_photo_url",
+                    delivery_id,
+                )
+                vals.pop('proof_photo_url')
         fleet_delivery.write(vals)
 
         # Post chatter to picking (FR-06.3)
@@ -117,7 +127,7 @@ class UvaFleetService(models.AbstractModel):
         """
         active_deliveries = self.env['uva.fleet.delivery'].search([
             ('state', 'not in', list(_TERMINAL_STATES)),
-        ])
+        ], limit=200, order='last_status_at asc nulls first')
 
         ICP = self.env['ir.config_parameter'].sudo()
         api_key = ICP.get_param('uva.fleet.api_key', '')

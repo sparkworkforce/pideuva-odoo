@@ -6,6 +6,8 @@ import time
 from odoo import http, SUPERUSER_ID
 from odoo.http import request, Response
 
+from .uva_order_webhook import _check_nonce
+
 _logger = logging.getLogger(__name__)
 
 _RATE_LIMIT_MAX = 60
@@ -64,8 +66,24 @@ class UvaFleetStatusWebhookController(http.Controller):
                 status=429,
                 mimetype='application/json',
             )
+        ip = request.httprequest.remote_addr or 'unknown'
+        if not _check_rate_limit(f'ip:{ip}'):
+            return Response(
+                json.dumps({'error': 'rate limit exceeded'}),
+                status=429,
+                mimetype='application/json',
+            )
 
         # Step 1: Verify company exists
+        # Body size limit
+        content_length = request.httprequest.content_length or 0
+        if content_length > 1_048_576:
+            return Response(
+                json.dumps({'error': 'payload too large'}),
+                status=413,
+                mimetype='application/json',
+            )
+
         company = env['res.company'].browse(company_id)
         if not company.exists():
             _logger.warning(
@@ -94,6 +112,12 @@ class UvaFleetStatusWebhookController(http.Controller):
 
         # Step 3: Validate HMAC — fail closed (SECURITY-15, BR-01)
         raw_body = request.httprequest.get_data()
+        if len(raw_body) > 1_048_576:
+            return Response(
+                json.dumps({'error': 'payload too large'}),
+                status=413,
+                mimetype='application/json',
+            )
         signature = request.httprequest.headers.get('X-Uva-Signature', '')
 
         if not env['uva.api.client'].validate_hmac(raw_body, signature, webhook_secret):
@@ -104,6 +128,15 @@ class UvaFleetStatusWebhookController(http.Controller):
             return Response(
                 json.dumps({'error': 'forbidden'}),
                 status=403,
+                mimetype='application/json',
+            )
+
+        # Nonce check — reject replayed requests within TTL window
+        request_id = request.httprequest.headers.get('X-Uva-Request-Id', '')
+        if not _check_nonce(request_id):
+            return Response(
+                json.dumps({'error': 'duplicate request'}),
+                status=409,
                 mimetype='application/json',
             )
 
@@ -155,22 +188,39 @@ class UvaFleetStatusWebhookController(http.Controller):
 
         # M3: Replay protection — reject payloads with stale timestamps
         ts = payload.get('timestamp') or payload.get('updated_at')
-        if ts:
-            try:
-                from odoo import fields as odoo_fields
-                ts_dt = odoo_fields.Datetime.to_datetime(ts)
-                if ts_dt and abs((odoo_fields.Datetime.now() - ts_dt).total_seconds()) > 300:
-                    _logger.warning(
-                        "UvaFleetStatusWebhookController: stale timestamp for company_id=%s",
-                        company_id,
-                    )
-                    return Response(
-                        json.dumps({'error': 'stale request'}),
-                        status=400,
-                        mimetype='application/json',
-                    )
-            except (ValueError, TypeError):
-                pass  # unparseable timestamp — let the service layer handle it
+        if not ts:
+            _logger.warning(
+                "UvaFleetStatusWebhookController: missing timestamp for company_id=%s",
+                company_id,
+            )
+            return Response(
+                json.dumps({'error': 'missing timestamp'}),
+                status=400,
+                mimetype='application/json',
+            )
+        try:
+            from odoo import fields as odoo_fields
+            ts_dt = odoo_fields.Datetime.to_datetime(ts)
+            if ts_dt and abs((odoo_fields.Datetime.now() - ts_dt).total_seconds()) > 300:
+                _logger.warning(
+                    "UvaFleetStatusWebhookController: stale timestamp for company_id=%s",
+                    company_id,
+                )
+                return Response(
+                    json.dumps({'error': 'stale request'}),
+                    status=400,
+                    mimetype='application/json',
+                )
+        except (ValueError, TypeError):
+            _logger.warning(
+                "UvaFleetStatusWebhookController: unparseable timestamp for company_id=%s",
+                company_id,
+            )
+            return Response(
+                json.dumps({'error': 'invalid timestamp'}),
+                status=400,
+                mimetype='application/json',
+            )
 
         try:
             extra_kwargs = {}

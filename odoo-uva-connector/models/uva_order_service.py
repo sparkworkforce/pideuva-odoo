@@ -9,9 +9,10 @@ from .uva_api_client import RETRYABLE_ACTIONS, UvaApiError
 _logger = logging.getLogger(__name__)
 
 
-class UvaOrderService(models.AbstractModel):
+class UvaOrderService(models.Model):
     _name = 'uva.order.service'
     _description = 'Uva PR Order Ingestion Service'
+    _auto = False
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -24,6 +25,12 @@ class UvaOrderService(models.AbstractModel):
         if not external_id:
             _logger.warning("[uva:?] ingest_order: missing external_id in payload — skipping")
             return self.env['uva.order.log'].browse()
+
+        # Cap raw_payload at 64KB to prevent storage abuse
+        _MAX_PAYLOAD_SIZE = 65536
+        raw_payload_str = json.dumps(raw_order)
+        if len(raw_payload_str) > _MAX_PAYLOAD_SIZE:
+            raw_payload_str = raw_payload_str[:_MAX_PAYLOAD_SIZE]
 
         # Step 1: Deduplicate
         existing = self._deduplicate(external_id)
@@ -40,7 +47,7 @@ class UvaOrderService(models.AbstractModel):
             order_log = self.env['uva.order.log'].create({
                 'external_id': external_id,
                 'store_id': store_config.id,
-                'raw_payload': json.dumps(raw_order),
+                'raw_payload': raw_payload_str,
                 'state': 'rejected',
                 'uva_source': 'uva',
                 'received_at': fields.Datetime.now(),
@@ -62,6 +69,10 @@ class UvaOrderService(models.AbstractModel):
 
         # Step 3: Validate product mappings
         order_lines = raw_order.get('items', [])
+        if len(order_lines) > 200:
+            _logger.warning("[uva:%s] ingest_order: too many items (%d) — rejecting",
+                            external_id, len(order_lines))
+            return self.env['uva.order.log'].browse()
         mapped_lines, unmapped_ids = self._validate_product_mappings(order_lines, effective_store)
 
         # Parse tip (#3)
@@ -76,7 +87,7 @@ class UvaOrderService(models.AbstractModel):
                 order_log = self.env['uva.order.log'].create({
                     'external_id': external_id,
                     'store_id': effective_store.id,
-                    'raw_payload': json.dumps(raw_order),
+                    'raw_payload': raw_payload_str,
                     'state': 'draft',
                     'uva_source': 'uva',
                     'received_at': fields.Datetime.now(),
@@ -123,6 +134,29 @@ class UvaOrderService(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
+    def get_pending_for_pos(self, pos_config_id=None):
+        """Return pending/accepted orders for the given POS config on mount."""
+        if not pos_config_id:
+            return []
+        store = self.env['uva.store.config'].search([
+            ('pos_config_id', '=', pos_config_id), ('active', '=', True),
+        ], limit=1)
+        if not store:
+            return []
+        orders = self.env['uva.order.log'].search([
+            ('store_id', '=', store.id),
+            ('state', 'in', ('draft', 'pending', 'accepted')),
+        ], order='received_at desc', limit=50)
+        return [{
+            'order_id': o.id,
+            'external_id': o.external_id,
+            'state': o.state,
+            'store_name': store.name,
+            'auto_accept_timeout': store.auto_accept_timeout,
+            'items': [],  # Items loaded on-demand when order is selected
+        } for o in orders]
+
+    @api.model
     def process_staff_action(self, order_id, action, unavailable_items=None):
         """Process a POS staff action on an order.
 
@@ -140,6 +174,24 @@ class UvaOrderService(models.AbstractModel):
             return
 
         store = order_log.store_id
+
+        # Store-level authorization: verify calling user is a POS user with an open session on this store
+        user = self.env.user
+        if not user.has_group('base.group_system'):
+            if not user.has_group('point_of_sale.group_pos_user'):
+                _logger.warning(
+                    "process_staff_action: user %s lacks POS access", user.id,
+                )
+                return
+            pos_config = store.pos_config_id
+            if pos_config and not self.env['pos.session'].sudo().search([
+                ('config_id', '=', pos_config.id),
+                ('state', '=', 'opened'),
+            ], limit=1):
+                _logger.warning(
+                    "process_staff_action: no open session for store %s", store.id,
+                )
+                return
         if action in ('accept', 'modify'):
             order_log.action_accept(unavailable_items=unavailable_items)
         elif action == 'reject':

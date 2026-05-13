@@ -1,5 +1,6 @@
 # License: OPL-1 (https://www.odoo.com/documentation/17.0/legal/licenses.html)
 import logging
+import secrets
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
@@ -75,6 +76,14 @@ class UvaFleetDelivery(models.Model):
     tracking_url = fields.Char(
         string='Tracking URL',
         readonly=True,
+    )
+    tracking_token = fields.Char(
+        string='Public Tracking Token',
+        default=lambda self: secrets.token_hex(16),
+        index=True,
+        readonly=True,
+        copy=False,
+        help='Random token for public tracking page URL (prevents enumeration).',
     )
     pickup_lat = fields.Float(string='Pickup Latitude', digits=(10, 7))
     pickup_lng = fields.Float(string='Pickup Longitude', digits=(10, 7))

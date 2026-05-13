@@ -12,3 +12,5 @@ from . import test_uva_bulk_mapping
 from . import test_uva_health_check
 from . import test_uva_webhook_security
 from . import test_uva_e2e_mock
+from . import test_uva_tracking
+from . import test_uva_notification
