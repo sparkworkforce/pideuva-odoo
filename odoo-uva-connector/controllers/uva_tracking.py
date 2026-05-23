@@ -71,6 +71,9 @@ class UvaTrackingController(http.Controller):
     @http.route('/uva/health', type='http', auth='none', methods=['GET'], csrf=False)
     def health_check(self, **kwargs):
         """External monitoring endpoint — returns connector health status."""
+        ip = request.httprequest.remote_addr or 'unknown'
+        if not _check_rate_limit(f'health:{ip}'):
+            return request.make_response('Too many requests', status=429)
         env = request.env(user=1)
         retry_pending = env['uva.api.retry.queue'].search_count([('state', '=', 'pending')])
         last_poll = env['uva.store.config'].search(

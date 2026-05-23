@@ -7,6 +7,10 @@ class UvaProductAlias(models.Model):
     _description = 'Uva Product Alias'
     _order = 'alias_name'
 
+    # NOTE: No company_id — aliases are intentionally global (shared across all companies).
+    # This allows a single alias table to serve multi-company deployments where product
+    # names from Uva are consistent regardless of which company receives the order.
+
     alias_name = fields.Char(required=True, index=True)
     canonical_name = fields.Char(required=True)
     product_id = fields.Many2one('product.product', string='Product')
